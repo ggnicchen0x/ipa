@@ -57,9 +57,9 @@ struct ExternalPatchHubView: View {
                     HStack {
                         Label("Kernel Status", systemImage: "bolt.shield")
                         Spacer()
-                        Text(appState.hasAccess ? "Active & Rooted" : "Ready to Exploit")
+                        Text(appState.exploitStatus.isSuccess ? "Active & Rooted" : "Ready to Exploit")
                             .font(.footnote)
-                            .foregroundStyle(appState.hasAccess ? .green : .orange)
+                            .foregroundStyle(appState.exploitStatus.isSuccess ? .green : .orange)
                     }
                 } header: {
                     Text("Game Configuration")
@@ -241,7 +241,7 @@ struct ExternalPatchHubView: View {
             var restoredCount = 0
             for item in patchStore.items {
                 guard let project = item.project else { continue }
-                if let receipt = try? PatchTransaction.readReceipt(for: project.id) {
+                if let receipt = DevicePatchService.latestReceipt(projectID: project.id) {
                     do {
                         try DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
                         restoredCount += 1
