@@ -117,9 +117,9 @@ struct SettingsView: View {
 
                 Section(language.text("settings.credits")) {
                     creditsRow(
-                        name: "YangJiii",
+                        name: "Nicchen",
                         role: language.text("credit.yangjiii"),
-                        url: "https://x.com/duongduong0908"
+                        url: "https://t.me/ioscrackvn"
                     )
                     creditsRow(
                         name: "0xjohnnydev",
