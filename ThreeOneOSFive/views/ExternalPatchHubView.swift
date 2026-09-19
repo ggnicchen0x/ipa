@@ -167,7 +167,7 @@ struct ExternalPatchHubView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Reset Guest Account")
                                     .fontWeight(.medium)
-                                Text("Injects resetGuest config to \(targetBundle)")
+                                Text("Reset your Guest Account : \(targetBundle)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -187,7 +187,7 @@ struct ExternalPatchHubView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Remove Reset Config")
                                     .fontWeight(.medium)
-                                Text("Deletes localConfig.json after guest reset")
+                                Text("Deletes config after guest reset")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
