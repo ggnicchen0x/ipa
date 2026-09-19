@@ -243,16 +243,16 @@ struct ExternalPatchHubView: View {
                 let name = project.name.lowercased()
 
                 var shouldApply = false
-                if aimStableEnabled && (name == "avatar drag" || name.contains("avatar") || name == "aim drag" || (name.contains("aim") && !name.contains("aimbody") && !name.contains("esp")) || name.contains("box") || name.contains("ffth")) {
+                if aimStableEnabled && (name.contains("avatar") || name.contains("aim")) {
                     shouldApply = true
                 }
                 if fps144Enabled && name.contains("144") {
                     shouldApply = true
                 }
-                if magicBulletEnabled && (name == "magic" || name.contains("magic") || name.contains("athmagic")) {
+                if magicBulletEnabled && name.contains("magic") {
                     shouldApply = true
                 }
-                if bodyDragEnabled && (name == "aimbody" || name.contains("aimbody") || name.contains("athdrag") || name.contains("athbody") || (name.contains("body") && !name.contains("avatar"))) {
+                if bodyDragEnabled && (name.contains("aimbody") || name.contains("body")) {
                     shouldApply = true
                 }
                 if cleanCacheEnabled && (name.contains("cleann") || name.contains("cash")) {
