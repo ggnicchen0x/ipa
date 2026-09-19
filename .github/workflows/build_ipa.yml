@@ -36,6 +36,10 @@ jobs:
           APP_DIR=$(find ./build/3105.xcarchive/Products/Applications -name "*.app" -maxdepth 1)
           cp -r "$APP_DIR" Payload/ByteExternal.app
           
+          # Copy explicit AppIcon files directly into bundle for sideloaders
+          cp ThreeOneOSFive/AppIcon*.png Payload/ByteExternal.app/ 2>/dev/null || true
+          cp ThreeOneOSFive/AppLogo.png Payload/ByteExternal.app/ 2>/dev/null || true
+          
           # Bundle all .3105 patches directly into the .app
           if [ -d "ThreeOneOSFive/BundledPatches" ]; then
             cp -r ThreeOneOSFive/BundledPatches/*.3105 Payload/ByteExternal.app/ 2>/dev/null || true

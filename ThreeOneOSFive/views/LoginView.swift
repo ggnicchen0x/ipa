@@ -115,13 +115,13 @@ public struct LoginView: View {
                                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                 .foregroundColor(AppTheme.accent)
                             Spacer()
-                            Text("1-DEVICE LOCK")
+                            Text("DEVICE LOCK")
                                 .font(.system(size: 9, weight: .bold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(AppTheme.accent.opacity(0.2))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(AppTheme.accent.opacity(0.25))
                                 .cornerRadius(4)
-                                .foregroundColor(AppTheme.accent)
+                                .foregroundColor(Color(hex: 0xd8b4fe))
                         }
                         
                         Divider().background(Color.white.opacity(0.1))
@@ -262,13 +262,30 @@ public struct LoginView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
-                        .background(authService.isLockedOut ? Color(hex: 0x7f1d1d) : AppTheme.accent)
+                        .background(
+                            authService.isLockedOut
+                                ? AnyView(Color(hex: 0x7f1d1d))
+                                : AnyView(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [Color(hex: 0xb76ef8), Color(hex: 0x8b36e8)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                        )
                         .foregroundColor(.white)
                         .cornerRadius(12)
-                        .shadow(color: authService.isLockedOut ? Color.red.opacity(0.3) : AppTheme.accent.opacity(0.35), radius: 8, x: 0, y: 4)
+                        .shadow(
+                            color: authService.isLockedOut
+                                ? Color.red.opacity(0.3)
+                                : Color(hex: 0xa855f7).opacity(0.45),
+                            radius: 10,
+                            x: 0,
+                            y: 4
+                        )
                     }
                     .disabled(authService.isLoading || authService.isLockedOut || licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity((licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || authService.isLockedOut) ? 0.6 : 1.0)
+                    .opacity((licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || authService.isLockedOut) ? 0.78 : 1.0)
                     
                     // Support Links
                     VStack(spacing: 8) {

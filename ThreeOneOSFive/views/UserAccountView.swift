@@ -93,9 +93,9 @@ struct UserAccountView: View {
                     }
 
                     LabeledContent {
-                        Text(AuthService.shared.expirationText.isEmpty ? "LIFETIME" : AuthService.shared.expirationText)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        Text(AuthService.shared.formattedExpirationText)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(AuthService.shared.formattedExpirationText.contains("Expired") ? Color.red : (AuthService.shared.formattedExpirationText == "LIFETIME" ? AppTheme.accent : Color.primary))
                     } label: {
                         Label("Plan Expiry", systemImage: "clock.badge.checkmark")
                     }

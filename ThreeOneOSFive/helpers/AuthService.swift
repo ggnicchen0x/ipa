@@ -19,6 +19,7 @@ public final class AuthService: ObservableObject {
     // Storage Keys
     private let tokenKey = "com.threeoneosfive.auth.session_token"
     private let savedLicenseKey = "com.threeoneosfive.auth.license_key"
+    private let savedExpirationKey = "com.threeoneosfive.auth.expiration_date"
     private let lockoutUntilKey = "com.threeoneosfive.auth.lockout_until"
     
     @Published public var isAuthenticated: Bool = false
@@ -26,6 +27,67 @@ public final class AuthService: ObservableObject {
     @Published public var errorMessage: String? = nil
     @Published public var activeLicense: String = ""
     @Published public var expirationText: String = ""
+    
+    public var formattedExpirationText: String {
+        guard !expirationText.isEmpty else { return "LIFETIME" }
+        let trimmed = expirationText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.uppercased() == "LIFETIME" || trimmed.uppercased() == "NEVER" {
+            return "LIFETIME"
+        }
+        
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd"
+        ]
+        
+        let inFormatter = DateFormatter()
+        inFormatter.locale = Locale(identifier: "en_US_POSIX")
+        inFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        var parsedDate: Date? = nil
+        for format in formats {
+            inFormatter.dateFormat = format
+            if let d = inFormatter.date(from: trimmed) {
+                parsedDate = d
+                break
+            }
+        }
+        
+        if parsedDate == nil {
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            parsedDate = isoFormatter.date(from: trimmed) ?? ISO8601DateFormatter().date(from: trimmed)
+        }
+        
+        guard let expDate = parsedDate else {
+            if trimmed.count >= 10 && trimmed.contains("-") {
+                return String(trimmed.prefix(10))
+            }
+            return trimmed
+        }
+        
+        let outFormatter = DateFormatter()
+        outFormatter.dateFormat = "yyyy-MM-dd"
+        outFormatter.timeZone = TimeZone.current
+        let dateString = outFormatter.string(from: expDate)
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: expDate))
+        let daysLeft = components.day ?? 0
+        
+        if daysLeft < 0 {
+            return "\(dateString) (Expired)"
+        } else if daysLeft == 0 {
+            return "\(dateString) (Expires Today)"
+        } else if daysLeft == 1 {
+            return "\(dateString) (1 Day)"
+        } else {
+            return "\(dateString) (\(daysLeft) Days)"
+        }
+    }
     
     // Spam Prevention & Lockout State (5 taps in 1 min -> 10 min timeout)
     @Published public var isLockedOut: Bool = false
@@ -41,6 +103,7 @@ public final class AuthService: ObservableObject {
         // Check for saved session on launch
         if let token = UserDefaults.standard.string(forKey: tokenKey), !token.isEmpty {
             self.activeLicense = UserDefaults.standard.string(forKey: savedLicenseKey) ?? ""
+            self.expirationText = UserDefaults.standard.string(forKey: savedExpirationKey) ?? ""
             self.validateSessionSilently(token: token)
         }
     }
@@ -195,6 +258,7 @@ public final class AuthService: ObservableObject {
                     self.localAttemptTimestamps.removeAll()
                     UserDefaults.standard.set(token, forKey: self.tokenKey)
                     UserDefaults.standard.set(cleanKey, forKey: self.savedLicenseKey)
+                    UserDefaults.standard.set(expiresAt, forKey: self.savedExpirationKey)
                     self.activeLicense = cleanKey
                     self.expirationText = expiresAt
                     self.isAuthenticated = true
@@ -284,6 +348,7 @@ public final class AuthService: ObservableObject {
         heartbeatTimer = nil
         UserDefaults.standard.removeObject(forKey: tokenKey)
         UserDefaults.standard.removeObject(forKey: savedLicenseKey)
+        UserDefaults.standard.removeObject(forKey: savedExpirationKey)
         self.isAuthenticated = false
         self.activeLicense = ""
         self.expirationText = ""
