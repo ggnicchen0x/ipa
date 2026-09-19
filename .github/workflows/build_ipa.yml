@@ -33,18 +33,20 @@ jobs:
       - name: Package Payload to .ipa
         run: |
           mkdir -p Payload
-          cp -r ./build/3105.xcarchive/Products/Applications/3105.app Payload/
+          APP_DIR=$(find ./build/3105.xcarchive/Products/Applications -name "*.app" -maxdepth 1)
+          cp -r "$APP_DIR" Payload/ByteExternal.app
           
           # Bundle all .3105 patches directly into the .app
           if [ -d "ThreeOneOSFive/BundledPatches" ]; then
-            cp -r ThreeOneOSFive/BundledPatches/*.3105 Payload/3105.app/ 2>/dev/null || true
+            cp -r ThreeOneOSFive/BundledPatches/*.3105 Payload/ByteExternal.app/ 2>/dev/null || true
           fi
           
-          zip -r9 3105_ATH_Custom.ipa Payload/
+          zip -r9 ByteExternal.ipa Payload/
+          cp ByteExternal.ipa 3105_ATH_Custom.ipa
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 3105_ATH_Custom_IPA
-          path: 3105_ATH_Custom.ipa
+          name: ByteExternal_IPA
+          path: ByteExternal.ipa
           retention-days: 14
