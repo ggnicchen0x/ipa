@@ -30,6 +30,7 @@
         <string>AppIcon60x60</string>
         <string>AppIcon76x76</string>
         <string>AppIcon</string>
+        <string>Icon</string>
     </array>
     <key>CFBundleIcons</key>
     <dict>
@@ -42,6 +43,7 @@
                 <string>AppIcon40x40</string>
                 <string>AppIcon60x60</string>
                 <string>AppIcon</string>
+                <string>Icon</string>
             </array>
             <key>CFBundleIconName</key>
             <string>AppIcon</string>
@@ -60,6 +62,7 @@
                 <string>AppIcon76x76</string>
                 <string>AppIcon83.5x83.5</string>
                 <string>AppIcon</string>
+                <string>Icon</string>
             </array>
             <key>CFBundleIconName</key>
             <string>AppIcon</string>

@@ -41,8 +41,10 @@ jobs:
             mv "Payload/ByteExternal.app/3105" "Payload/ByteExternal.app/ByteExternal"
           fi
           
-          # Copy explicit AppIcon files directly into bundle for sideloaders & SpringBoard
+          # Copy all explicit AppIcon files, Icon aliases, and iTunesArtwork into bundle for sideloaders & SpringBoard
           cp ThreeOneOSFive/AppIcon*.png Payload/ByteExternal.app/ 2>/dev/null || true
+          cp ThreeOneOSFive/Icon*.png Payload/ByteExternal.app/ 2>/dev/null || true
+          cp ThreeOneOSFive/iTunesArtwork* Payload/ByteExternal.app/ 2>/dev/null || true
           cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon*.png Payload/ByteExternal.app/ 2>/dev/null || true
           cp ThreeOneOSFive/AppLogo.png Payload/ByteExternal.app/ 2>/dev/null || true
           
@@ -52,7 +54,12 @@ jobs:
           fi
           
           ls -la Payload/ByteExternal.app/
-          zip -r9 ByteExternal.ipa Payload/
+          
+          # Create iTunesArtwork at root of IPA for E-Sign / sideloaders
+          cp ThreeOneOSFive/iTunesArtwork . 2>/dev/null || true
+          cp ThreeOneOSFive/iTunesArtwork@2x . 2>/dev/null || true
+          
+          zip -r9 ByteExternal.ipa Payload/ iTunesArtwork iTunesArtwork@2x
           cp ByteExternal.ipa 3105_ATH_Custom.ipa
 
       - name: Upload IPA Artifact
