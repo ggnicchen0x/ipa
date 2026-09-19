@@ -416,4 +416,8 @@ struct ExternalPatchHubView: View {
             }
         }
     }
+    
+    private func log(_ message: String) {
+        print("[ExternalPatchHub] \(message)")
+    }
 }
