@@ -6,8 +6,8 @@ import Security
 public final class AuthService: ObservableObject {
     public static let shared = AuthService()
     
-    // Server Configuration - Point this to your Bot Hosting Python egg URL
-    public var serverBaseURL: String = "http://127.0.0.1:8000"
+    // Server Configuration - Live Bot Hosting Python egg URL
+    public var serverBaseURL: String = "http://fi9.bot-hosting.cloud:25808"
     
     // Shared HMAC Secret (Matches backend config.py HMAC_SECRET)
     private let hmacSecret = "3105_HMAC_SIG_k9823hjd8923hjksdf78234"
