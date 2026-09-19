@@ -16,7 +16,7 @@ struct ExternalPatchHubView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var patchStore: PatchProjectStore
     
-    @AppStorage("external_hub.target_bundle") private var targetBundle: String = "com.dts.freefireth"
+    @AppStorage("external_hub.target_bundle") private var targetBundle: String = "com.dts.freefiremax"
     @AppStorage("mod.aim_stable") private var aimStableEnabled: Bool = false
     @AppStorage("mod.fps_144") private var fps144Enabled: Bool = false
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
@@ -30,14 +30,14 @@ struct ExternalPatchHubView: View {
     @State private var alertMessage: String = ""
 
     private let supportedBundles = [
-        ("Free Fire Global / TH", "com.dts.freefireth"),
-        ("Free Fire MAX", "com.dts.freefiremax")
+        ("Free Fire MAX", "com.dts.freefiremax"),
+        ("Free Fire TH", "com.dts.freefireth")
     ]
 
     var body: some View {
         NavigationStack {
             List {
-                // Section 1: Target Game Bundle
+                // Section 1: Game Configuration
                 Section {
                     Picker("Target Version", selection: $targetBundle) {
                         ForEach(supportedBundles, id: \.1) { item in
@@ -67,14 +67,14 @@ struct ExternalPatchHubView: View {
                     Text("Select your installed game version before toggling features.")
                 }
 
-                // Section 2: Mod Features & Toggles
+                // Section 2: External Toggles (Self-Applying & Self-Reverting)
                 Section {
                     Toggle(isOn: $aimStableEnabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Aim Drag")
                                     .fontWeight(.medium)
-                                Text("Patches avatar assetindexer in gameassetbundles")
+                                Text("Enhance your Aim Target")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -82,13 +82,16 @@ struct ExternalPatchHubView: View {
                             AppRowIcon(systemName: "scope", tint: .red)
                         }
                     }
+                    .onChange(of: aimStableEnabled) { isEnabled in
+                        handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
+                    }
 
                     Toggle(isOn: $fps144Enabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("144 FPS Unlock")
                                     .fontWeight(.medium)
-                                Text("Applies 144Hz plist preferences")
+                                Text("Unlocks ultra-smooth 144Hz gameplay")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -96,13 +99,16 @@ struct ExternalPatchHubView: View {
                             AppRowIcon(systemName: "speedometer", tint: .green)
                         }
                     }
+                    .onChange(of: fps144Enabled) { isEnabled in
+                        handleToggleChange(featureName: "144", isEnabled: isEnabled)
+                    }
 
                     Toggle(isOn: $magicBulletEnabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Magic Bullet")
                                     .fontWeight(.medium)
-                                Text("Applies Magic Bullet cache asset bundle")
+                                Text("Connect Every Single Bullets")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -110,13 +116,16 @@ struct ExternalPatchHubView: View {
                             AppRowIcon(systemName: "flame.fill", tint: .purple)
                         }
                     }
+                    .onChange(of: magicBulletEnabled) { isEnabled in
+                        handleToggleChange(featureName: "magic", isEnabled: isEnabled)
+                    }
 
                     Toggle(isOn: $bodyDragEnabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Body / Drag Boost")
+                                Text("Aim Body")
                                     .fontWeight(.medium)
-                                Text("Applies Aimbody cache asset bundle")
+                                Text("Only Red shots/high accuracy")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -124,13 +133,16 @@ struct ExternalPatchHubView: View {
                             AppRowIcon(systemName: "bolt.fill", tint: .blue)
                         }
                     }
+                    .onChange(of: bodyDragEnabled) { isEnabled in
+                        handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
+                    }
 
                     Toggle(isOn: $cleanCacheEnabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Clean Cache Asset")
                                     .fontWeight(.medium)
-                                Text("Flushes corrupted game assets")
+                                Text("Cleans and refreshes game cache")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -138,11 +150,14 @@ struct ExternalPatchHubView: View {
                             AppRowIcon(systemName: "arrow.triangle.2.circlepath", tint: .orange)
                         }
                     }
+                    .onChange(of: cleanCacheEnabled) { isEnabled in
+                        handleToggleChange(featureName: "clean", isEnabled: isEnabled)
+                    }
                 } header: {
                     Text("External Toggles")
                 }
 
-                // Section 3: Guest Account Reset
+                // Section 3: Guest Account Manager
                 Section {
                     Button {
                         resetGuestAccount()
@@ -186,10 +201,10 @@ struct ExternalPatchHubView: View {
                     Text("Tap 'Reset Guest Account', open Free Fire once to initialize the wipe, then close the game and tap 'Remove Reset Config'.")
                 }
 
-                // Section 4: Master Action Controls
+                // Section 4: Execution / Safety
                 Section {
-                    Button {
-                        applyActiveMods()
+                    Button(role: .destructive) {
+                        restoreAllDefaults()
                     } label: {
                         HStack {
                             Spacer()
@@ -197,28 +212,16 @@ struct ExternalPatchHubView: View {
                                 ProgressView()
                                     .padding(.trailing, 8)
                             }
-                            Text("Apply Active Mods")
+                            Text("Restore Game to Original (Clean)")
                                 .fontWeight(.semibold)
                             Spacer()
                         }
                     }
                     .disabled(isProcessing)
-                    .tint(AppTheme.accent)
-
-                    Button(role: .destructive) {
-                        restoreAllDefaults()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Restore Game to Original (Clean)")
-                            Spacer()
-                        }
-                    }
-                    .disabled(isProcessing)
                 } header: {
-                    Text("Execution")
+                    Text("Execution & Safety")
                 } footer: {
-                    Text("Make sure the target game is closed before tapping Apply or Restore.")
+                    Text("Make sure the target game is closed before restoring.")
                 }
             }
             .navigationTitle("External Menu")
@@ -230,98 +233,79 @@ struct ExternalPatchHubView: View {
         }
     }
 
-    private func applyActiveMods() {
-        isProcessing = true
-        statusMessage = "Applying active mods..."
-
+    private func handleToggleChange(featureName: String, isEnabled: Bool) {
         Task {
-            var appliedCount = 0
-            var errorDetails: [String] = []
-
-            for item in patchStore.items {
-                guard let project = item.project else { continue }
+            let matchingItems = patchStore.items.filter { item in
+                guard let project = item.project else { return false }
                 let name = project.name.lowercased()
+                if featureName == "avatar" {
+                    return name.contains("avatar") || name.contains("aim drag")
+                } else if featureName == "144" {
+                    return name.contains("144")
+                } else if featureName == "magic" {
+                    return name.contains("magic")
+                } else if featureName == "aimbody" {
+                    return name.contains("aimbody") || (name.contains("body") && !name.contains("avatar"))
+                } else if featureName == "clean" {
+                    return name.contains("cleann") || name.contains("cash")
+                }
+                return false
+            }
 
-                var shouldApply = false
-                if aimStableEnabled && (name.contains("avatar") || name.contains("aim")) {
-                    shouldApply = true
-                }
-                if fps144Enabled && name.contains("144") {
-                    shouldApply = true
-                }
-                if magicBulletEnabled && name.contains("magic") {
-                    shouldApply = true
-                }
-                if bodyDragEnabled && (name.contains("aimbody") || name.contains("body")) {
-                    shouldApply = true
-                }
-                if cleanCacheEnabled && (name.contains("cleann") || name.contains("cash")) {
-                    shouldApply = true
-                }
+            for item in matchingItems {
+                guard let project = item.project else { continue }
+                var adaptedProject = project
+                adaptedProject.bundleIdentifiers = [targetBundle]
 
-                if shouldApply {
-                    // Adapt the project to target the selected game version only
-                    var adaptedProject = project
-                    adaptedProject.bundleIdentifiers = [targetBundle]
-                    
-                    // Filter or map directories to the selected bundle
-                    var seenDirs = Set<String>()
-                    adaptedProject.directories = project.directories
-                        .map { dir in
-                            var d = dir
-                            d.bundleID = targetBundle
-                            return d
-                        }
-                        .filter { seenDirs.insert($0.relativePath).inserted }
+                var seenDirs = Set<String>()
+                adaptedProject.directories = project.directories
+                    .map { dir in
+                        var d = dir
+                        d.bundleID = targetBundle
+                        return d
+                    }
+                    .filter { seenDirs.insert($0.relativePath).inserted }
 
-                    // Filter or map rules to the selected bundle
-                    var seenRules = Set<String>()
-                    adaptedProject.rules = project.rules
-                        .map { rule in
-                            var r = rule
-                            r.bundleID = targetBundle
-                            // Adapt bundle plist filename if switching between freefireth and freefiremax
-                            if r.relativePath.contains("Library/Preferences/") {
-                                if targetBundle == "com.dts.freefiremax" {
-                                    r.relativePath = "Library/Preferences/com.dts.freefiremax.plist"
-                                    r.replacementFilename = "com.dts.freefiremax.plist"
-                                } else if targetBundle == "com.dts.freefireth" {
-                                    r.relativePath = "Library/Preferences/com.dts.freefireth.plist"
-                                    r.replacementFilename = "com.dts.freefireth.plist"
-                                }
+                var seenRules = Set<String>()
+                adaptedProject.rules = project.rules
+                    .map { rule in
+                        var r = rule
+                        r.bundleID = targetBundle
+                        if r.relativePath.contains("Library/Preferences/") {
+                            if targetBundle == "com.dts.freefiremax" {
+                                r.relativePath = "Library/Preferences/com.dts.freefiremax.plist"
+                                r.replacementFilename = "com.dts.freefiremax.plist"
+                            } else if targetBundle == "com.dts.freefireth" {
+                                r.relativePath = "Library/Preferences/com.dts.freefireth.plist"
+                                r.replacementFilename = "com.dts.freefireth.plist"
                             }
-                            return r
                         }
-                        .filter { seenRules.insert($0.relativePath).inserted }
+                        return r
+                    }
+                    .filter { seenRules.insert($0.relativePath).inserted }
 
-                    // If previously applied, restore first so re-applying updates cleanly
+                if isEnabled {
+                    // Restore existing receipt if any before reapplying
                     if let existingReceipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
                         try? DevicePatchService.restore(receipt: existingReceipt, allowChangedTargets: true)
                     }
-
                     do {
                         _ = try DevicePatchService.apply(project: adaptedProject)
-                        appliedCount += 1
+                        log("hub: auto-applied \(project.name) to \(targetBundle)")
                     } catch {
-                        errorDetails.append("\(project.name): \(error.localizedDescription)")
-                        log("hub: apply failed for \(project.name): \(error.localizedDescription)")
+                        log("hub: auto-apply failed for \(project.name): \(error.localizedDescription)")
+                    }
+                } else {
+                    // Revert single feature
+                    if let receipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
+                        do {
+                            try DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
+                            log("hub: auto-reverted \(project.name) for \(targetBundle)")
+                        } catch {
+                            log("hub: auto-revert failed for \(project.name): \(error.localizedDescription)")
+                        }
                     }
                 }
-            }
-
-            await MainActor.run {
-                isProcessing = false
-                if appliedCount > 0 {
-                    alertTitle = "Mod Application"
-                    alertMessage = "Successfully applied \(appliedCount) active mods to \(targetBundle)."
-                } else if !errorDetails.isEmpty {
-                    alertTitle = "Mod Application Failed"
-                    alertMessage = "Error applying to \(targetBundle):\n" + errorDetails.joined(separator: "\n")
-                } else {
-                    alertTitle = "No Mods Enabled"
-                    alertMessage = "Toggle on at least one mod (like Aim Drag) before tapping Apply."
-                }
-                showingAlert = true
             }
         }
     }
