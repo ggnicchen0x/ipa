@@ -352,10 +352,19 @@ public final class AuthService: ObservableObject {
         self.isAuthenticated = false
         self.activeLicense = ""
         self.expirationText = ""
+        CloudPatchService.shared.clearCache()
+    }
+    
+    public var currentSessionToken: String {
+        return UserDefaults.standard.string(forKey: tokenKey) ?? ""
+    }
+    
+    public var hmacSecretValue: String {
+        return hmacSecret
     }
     
     // MARK: - Cryptographic Utilities
-    private func sha256(_ string: String) -> String {
+    public func sha256(_ string: String) -> String {
         guard let data = string.data(using: .utf8) else { return "" }
         var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
         data.withUnsafeBytes {
@@ -364,7 +373,7 @@ public final class AuthService: ObservableObject {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
     
-    private func hmacSHA256(payload: String, key: String) -> String {
+    public func hmacSHA256(payload: String, key: String) -> String {
         guard let payloadData = payload.data(using: .utf8),
               let keyData = key.data(using: .utf8) else { return "" }
         

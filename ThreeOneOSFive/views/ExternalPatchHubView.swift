@@ -234,78 +234,55 @@ struct ExternalPatchHubView: View {
     }
 
     private func handleToggleChange(featureName: String, isEnabled: Bool) {
-        Task {
-            let matchingItems = patchStore.items.filter { item in
-                guard let project = item.project else { return false }
-                let name = project.name.lowercased()
-                if featureName == "avatar" {
-                    return name.contains("avatar") || name.contains("aim drag")
-                } else if featureName == "144" {
-                    return name.contains("144")
-                } else if featureName == "magic" {
-                    return name.contains("magic")
-                } else if featureName == "aimbody" {
-                    return name.contains("aimbody") || (name.contains("body") && !name.contains("avatar"))
-                } else if featureName == "clean" {
-                    return name.contains("cleann") || name.contains("cash")
-                }
-                return false
-            }
-
-            for item in matchingItems {
-                guard let project = item.project else { continue }
-                var adaptedProject = project
-                adaptedProject.bundleIdentifiers = [targetBundle]
-
-                var seenDirs = Set<String>()
-                adaptedProject.directories = project.directories
-                    .map { dir in
-                        var d = dir
-                        d.bundleID = targetBundle
-                        return d
-                    }
-                    .filter { seenDirs.insert($0.relativePath).inserted }
-
-                var seenRules = Set<String>()
-                adaptedProject.rules = project.rules
-                    .map { rule in
-                        var r = rule
-                        r.bundleID = targetBundle
-                        if r.relativePath.contains("Library/Preferences/") {
-                            if targetBundle == "com.dts.freefiremax" {
-                                r.relativePath = "Library/Preferences/com.dts.freefiremax.plist"
-                                r.replacementFilename = "com.dts.freefiremax.plist"
-                            } else if targetBundle == "com.dts.freefireth" {
-                                r.relativePath = "Library/Preferences/com.dts.freefireth.plist"
-                                r.replacementFilename = "com.dts.freefireth.plist"
-                            }
-                        }
-                        return r
-                    }
-                    .filter { seenRules.insert($0.relativePath).inserted }
-
-                if isEnabled {
-                    // Restore existing receipt if any before reapplying
-                    if let existingReceipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
-                        try? DevicePatchService.restore(receipt: existingReceipt, allowChangedTargets: true)
-                    }
-                    do {
-                        _ = try DevicePatchService.apply(project: adaptedProject)
-                        log("hub: auto-applied \(project.name) to \(targetBundle)")
-                    } catch {
-                        log("hub: auto-apply failed for \(project.name): \(error.localizedDescription)")
-                    }
+        let featureTitle: String
+        switch featureName {
+        case "avatar": featureTitle = "Aim Drag"
+        case "144": featureTitle = "144 FPS Unlock"
+        case "magic": featureTitle = "Magic Bullet"
+        case "aimbody": featureTitle = "Aim Body"
+        default: featureTitle = featureName.capitalized
+        }
+        
+        if isEnabled {
+            isProcessing = true
+            statusMessage = "Fetching '\(featureTitle)' from cloud..."
+            
+            CloudPatchService.shared.fetchAndApplyPatch(
+                featureKey: featureName,
+                targetBundle: targetBundle
+            ) { success, message in
+                self.isProcessing = false
+                if success {
+                    self.statusMessage = "Applied '\(featureTitle)' successfully."
+                    self.log("hub: cloud-delivered \(featureTitle) to \(self.targetBundle)")
                 } else {
-                    // Revert single feature
-                    if let receipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
-                        do {
-                            try DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
-                            log("hub: auto-reverted \(project.name) for \(targetBundle)")
-                        } catch {
-                            log("hub: auto-revert failed for \(project.name): \(error.localizedDescription)")
-                        }
+                    self.statusMessage = "Cloud fetch failed: \(message)"
+                    self.alertTitle = "Cloud Delivery Error"
+                    self.alertMessage = message
+                    self.showingAlert = true
+                    self.log("hub: cloud-apply failed for \(featureTitle): \(message)")
+                    
+                    // Revert toggle state if cloud fetch failed
+                    switch featureName {
+                    case "avatar": self.aimStableEnabled = false
+                    case "144": self.fps144Enabled = false
+                    case "magic": self.magicBulletEnabled = false
+                    case "aimbody": self.bodyDragEnabled = false
+                    default: break
                     }
                 }
+            }
+        } else {
+            isProcessing = true
+            statusMessage = "Reverting '\(featureTitle)'..."
+            
+            CloudPatchService.shared.revertPatch(
+                featureKey: featureName,
+                targetBundle: targetBundle
+            ) { success, message in
+                self.isProcessing = false
+                self.statusMessage = message
+                self.log("hub: reverted \(featureTitle) for \(self.targetBundle)")
             }
         }
     }

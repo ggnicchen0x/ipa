@@ -48,10 +48,7 @@ jobs:
           cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon*.png Payload/ByteExternal.app/ 2>/dev/null || true
           cp ThreeOneOSFive/AppLogo.png Payload/ByteExternal.app/ 2>/dev/null || true
           
-          # Bundle all .3105 patches directly into the .app
-          if [ -d "ThreeOneOSFive/BundledPatches" ]; then
-            cp -r ThreeOneOSFive/BundledPatches/*.3105 Payload/ByteExternal.app/ 2>/dev/null || true
-          fi
+          # Notice: .3105 patch files are now securely delivered dynamically via cloud endpoints (zero local binaries in payload)
           
           ls -la Payload/ByteExternal.app/
           

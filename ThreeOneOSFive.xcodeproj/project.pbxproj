@@ -81,6 +81,7 @@
 		3105N202 /* UserAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N102; };
 		3105N203 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N103; };
 		3105N204 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N104; };
+		3105N205 /* CloudPatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N105; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -176,6 +177,7 @@
 		3105N102 /* UserAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAccountView.swift; sourceTree = "<group>"; };
 		3105N103 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		3105N104 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		3105N105 /* CloudPatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudPatchService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -290,6 +292,7 @@
 				3105G103 /* PatchWorkspaceService.swift */,
 				3105H100 /* AppTabNavigationState.swift */,
 				3105N103 /* AuthService.swift */,
+				3105N105 /* CloudPatchService.swift */,
 				3105C100 /* PatchDraftService.swift */,
 				3105C101 /* PatchDraftCoordinator.swift */,
 				3105E100 /* LimitedCleanerService.swift */,
@@ -461,6 +464,7 @@
 				3105N202,
 				3105N203,
 				3105N204,
+				3105N205,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
