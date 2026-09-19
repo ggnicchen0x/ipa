@@ -280,6 +280,16 @@ struct ExternalPatchHubView: View {
                         .map { rule in
                             var r = rule
                             r.bundleID = targetBundle
+                            // Adapt bundle plist filename if switching between freefireth and freefiremax
+                            if r.relativePath.contains("Library/Preferences/") {
+                                if targetBundle == "com.dts.freefiremax" {
+                                    r.relativePath = "Library/Preferences/com.dts.freefiremax.plist"
+                                    r.replacementFilename = "com.dts.freefiremax.plist"
+                                } else if targetBundle == "com.dts.freefireth" {
+                                    r.relativePath = "Library/Preferences/com.dts.freefireth.plist"
+                                    r.replacementFilename = "com.dts.freefireth.plist"
+                                }
+                            }
                             return r
                         }
                         .filter { seenRules.insert($0.relativePath).inserted }
