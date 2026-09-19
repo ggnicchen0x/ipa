@@ -57,13 +57,36 @@ enum PatchProjectLibrary {
         return root
     }
 
+    private static let deletedBundledPatchesKey = "com.threeoneosfive.deleted_bundled_patches"
+
+    private static func isBundledPatchDeleted(_ filename: String) -> Bool {
+        let deleted = UserDefaults.standard.stringArray(forKey: deletedBundledPatchesKey) ?? []
+        return deleted.contains(filename)
+    }
+
+    private static func markBundledPatchDeleted(_ filename: String) {
+        var deleted = UserDefaults.standard.stringArray(forKey: deletedBundledPatchesKey) ?? []
+        if !deleted.contains(filename) {
+            deleted.append(filename)
+            UserDefaults.standard.set(deleted, forKey: deletedBundledPatchesKey)
+        }
+    }
+
+    private static func unmarkBundledPatchDeleted(_ filename: String) {
+        var deleted = UserDefaults.standard.stringArray(forKey: deletedBundledPatchesKey) ?? []
+        deleted.removeAll { $0 == filename }
+        UserDefaults.standard.set(deleted, forKey: deletedBundledPatchesKey)
+    }
+
     static func load(fileManager: FileManager = .default) -> [PatchLibraryItem] {
         guard let root = try? packageRootURL(fileManager: fileManager) else { return [] }
 
-        // Automatically discover and copy any .3105 files bundled with the app
+        // Automatically discover and copy any .3105 files bundled with the app (unless explicitly deleted)
         if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "3105", subdirectory: nil) {
             for bundleURL in bundleURLs {
-                let targetURL = root.appendingPathComponent(bundleURL.lastPathComponent)
+                let filename = bundleURL.lastPathComponent
+                guard !isBundledPatchDeleted(filename) else { continue }
+                let targetURL = root.appendingPathComponent(filename)
                 if !fileManager.fileExists(atPath: targetURL.path) {
                     try? fileManager.copyItem(at: bundleURL, to: targetURL)
                 }
@@ -221,16 +244,6 @@ enum PatchProjectLibrary {
             packageID: summary.packageID,
             fileManager: fileManager
         )
-        if let occupiedPath = overlappingTargetPath(
-            in: decoded.project,
-            excludingPackageID: summary.packageID,
-            fileManager: fileManager
-        ) {
-            if decoded.project.isPrivate, !authorCopy {
-                throw PatchPackageError.privateOperationFailed
-            }
-            throw PatchPackageError.targetOccupied(occupiedPath)
-        }
         let previousData = try existingURL.map { try readPackage(at: $0) }
         let originURL = try originFileURL(
             packageID: summary.packageID,
@@ -248,6 +261,9 @@ enum PatchProjectLibrary {
                 existingURL: existingURL,
                 fileManager: fileManager
             )
+            if let saved = savedURL {
+                unmarkBundledPatchDeleted(saved.lastPathComponent)
+            }
             if summary.schemaVersion >= 2 {
                 if PatchProjectAccessPolicy.shouldMaterializeWorkspace(
                     project: decoded.project,
@@ -299,6 +315,7 @@ enum PatchProjectLibrary {
         ) == nil else {
             throw PatchPackageError.activePatchCannotBeDeleted
         }
+        markBundledPatchDeleted(item.packageURL.lastPathComponent)
         if fileManager.fileExists(atPath: item.packageURL.path) {
             try fileManager.removeItem(at: item.packageURL)
         }
