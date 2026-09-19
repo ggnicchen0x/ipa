@@ -4,9 +4,15 @@ enum AppTheme {
     static let accent = Color(
         uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 1.00, green: 0.64, blue: 0.42, alpha: 1.00)
-                : UIColor(red: 0.85, green: 0.42, blue: 0.20, alpha: 1.00)
+                ? UIColor(red: 0.68, green: 0.45, blue: 0.98, alpha: 1.00) // #ad73fa (medium-light vibrant purple)
+                : UIColor(red: 0.55, green: 0.28, blue: 0.92, alpha: 1.00) // #8c47eb
         }
+    )
+    static let purple = Color(
+        uiColor: UIColor(red: 0.68, green: 0.45, blue: 0.98, alpha: 1.00)
+    )
+    static let purpleDark = Color(
+        uiColor: UIColor(red: 0.45, green: 0.18, blue: 0.82, alpha: 1.00)
     )
     static let pageBackground = Color(uiColor: .systemBackground)
     static let consoleBackground = Color(uiColor: .secondarySystemBackground)

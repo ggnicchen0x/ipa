@@ -26,7 +26,7 @@ public struct LoginView: View {
             
             // Background subtle gradient glow
             RadialGradient(
-                gradient: Gradient(colors: [Color.orange.opacity(0.12), Color.clear]),
+                gradient: Gradient(colors: [AppTheme.accent.opacity(0.18), Color.clear]),
                 center: .top,
                 startRadius: 20,
                 endRadius: 400
@@ -45,20 +45,20 @@ public struct LoginView: View {
                                 .frame(width: 80, height: 80)
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.orange.opacity(0.3), lineWidth: 1.5)
+                                        .stroke(AppTheme.accent.opacity(0.35), lineWidth: 1.5)
                                 )
-                                .shadow(color: Color.orange.opacity(0.2), radius: 10, x: 0, y: 4)
+                                .shadow(color: AppTheme.accent.opacity(0.25), radius: 10, x: 0, y: 4)
                             
                             Image(systemName: "lock.shield.fill")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 36, height: 36)
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                         }
                         
                         Text("BYTE IOS SECURITY GATEWAY")
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundColor(.orange)
+                            .foregroundColor(AppTheme.accent)
                             .tracking(2.0)
                         
                         Text("BYTE IOS EXTERNAL")
@@ -101,19 +101,19 @@ public struct LoginView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Image(systemName: "cpu")
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                                 .font(.system(size: 14))
                             Text("DEVICE SECURITY PROFILE")
                                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                             Spacer()
                             Text("1-DEVICE LOCK")
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.2))
+                                .background(AppTheme.accent.opacity(0.2))
                                 .cornerRadius(4)
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                         }
                         
                         Divider().background(Color.white.opacity(0.1))
@@ -135,7 +135,7 @@ public struct LoginView: View {
                             Spacer()
                             Text(String(authService.hardwareID.prefix(16)) + "...")
                                 .font(.system(size: 11, weight: .regular, design: .monospaced))
-                                .foregroundColor(.orange.opacity(0.8))
+                                .foregroundColor(AppTheme.accent.opacity(0.85))
                         }
                     }
                     .padding(16)
@@ -164,17 +164,17 @@ public struct LoginView: View {
                                     Text("Paste")
                                 }
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color.orange.opacity(0.15))
+                                .background(AppTheme.accent.opacity(0.15))
                                 .cornerRadius(6)
                             }
                         }
                         
                         HStack {
                             Image(systemName: "key.fill")
-                                .foregroundColor(.orange.opacity(0.7))
+                                .foregroundColor(AppTheme.accent.opacity(0.8))
                             
                             TextField("3105-MAX-XXXX-XXXX-XXXX", text: $licenseKeyInput)
                                 .font(.system(size: 15, weight: .medium, design: .monospaced))
@@ -195,7 +195,7 @@ public struct LoginView: View {
                         .cornerRadius(10)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                                .stroke(AppTheme.accent.opacity(0.35), lineWidth: 1)
                         )
                         
                         Text("Your key will be permanently bound to this device upon activation.")
@@ -254,10 +254,10 @@ public struct LoginView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
-                        .background(authService.isLockedOut ? Color(hex: 0x7f1d1d) : Color.orange)
+                        .background(authService.isLockedOut ? Color(hex: 0x7f1d1d) : AppTheme.accent)
                         .foregroundColor(.white)
                         .cornerRadius(12)
-                        .shadow(color: authService.isLockedOut ? Color.red.opacity(0.3) : Color.orange.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: authService.isLockedOut ? Color.red.opacity(0.3) : AppTheme.accent.opacity(0.35), radius: 8, x: 0, y: 4)
                     }
                     .disabled(authService.isLoading || authService.isLockedOut || licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .opacity((licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || authService.isLockedOut) ? 0.6 : 1.0)
@@ -275,7 +275,7 @@ public struct LoginView: View {
                                     Text("Discord")
                                 }
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                             }
                             
                             Text("•").foregroundColor(.white.opacity(0.3))
@@ -286,7 +286,7 @@ public struct LoginView: View {
                                     Text("Developer")
                                 }
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accent)
                             }
                         }
                     }

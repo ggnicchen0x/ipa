@@ -147,7 +147,7 @@ struct ExternalPatchHubView: View {
                                     .foregroundStyle(.secondary)
                             }
                         } icon: {
-                            AppRowIcon(systemName: "arrow.triangle.2.circlepath", tint: .orange)
+                            AppRowIcon(systemName: "arrow.triangle.2.circlepath", tint: AppTheme.accent)
                         }
                     }
                     .onChange(of: cleanCacheEnabled) { isEnabled in
@@ -163,7 +163,7 @@ struct ExternalPatchHubView: View {
                         resetGuestAccount()
                     } label: {
                         HStack {
-                            AppRowIcon(systemName: "person.crop.circle.badge.minus", tint: .orange)
+                            AppRowIcon(systemName: "person.crop.circle.badge.minus", tint: AppTheme.accent)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Reset Guest Account")
                                     .fontWeight(.medium)
