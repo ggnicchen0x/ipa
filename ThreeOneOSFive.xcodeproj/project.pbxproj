@@ -79,6 +79,8 @@
 		3105N200 /* UserManualView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N100; };
 		3105N201 /* DevInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N101; };
 		3105N202 /* UserAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N102; };
+		3105N203 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N103; };
+		3105N204 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N104; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -172,6 +174,8 @@
 		3105N100 /* UserManualView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManualView.swift; sourceTree = "<group>"; };
 		3105N101 /* DevInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevInfoView.swift; sourceTree = "<group>"; };
 		3105N102 /* UserAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAccountView.swift; sourceTree = "<group>"; };
+		3105N103 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		3105N104 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -254,6 +258,7 @@
 				3105N100 /* UserManualView.swift */,
 				3105N101 /* DevInfoView.swift */,
 				3105N102 /* UserAccountView.swift */,
+				3105N104 /* LoginView.swift */,
 			);
 			path = views;
 			sourceTree = "<group>";
@@ -284,6 +289,7 @@
 				3105B120 /* PatchProjectStore.swift */,
 				3105G103 /* PatchWorkspaceService.swift */,
 				3105H100 /* AppTabNavigationState.swift */,
+				3105N103 /* AuthService.swift */,
 				3105C100 /* PatchDraftService.swift */,
 				3105C101 /* PatchDraftCoordinator.swift */,
 				3105E100 /* LimitedCleanerService.swift */,
@@ -453,6 +459,8 @@
 				3105N200,
 				3105N201,
 				3105N202,
+				3105N203,
+				3105N204,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
