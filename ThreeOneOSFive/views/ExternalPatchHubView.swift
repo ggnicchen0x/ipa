@@ -142,7 +142,51 @@ struct ExternalPatchHubView: View {
                     Text("External Toggles")
                 }
 
-                // Section 3: Master Action Controls
+                // Section 3: Guest Account Reset
+                Section {
+                    Button {
+                        resetGuestAccount()
+                    } label: {
+                        HStack {
+                            AppRowIcon(systemName: "person.crop.circle.badge.minus", tint: .orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Reset Guest Account")
+                                    .fontWeight(.medium)
+                                Text("Injects resetGuest config to \(targetBundle)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if isProcessing {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isProcessing)
+
+                    Button(role: .destructive) {
+                        removeResetGuestConfig()
+                    } label: {
+                        HStack {
+                            AppRowIcon(systemName: "trash", tint: .red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Remove Reset Config")
+                                    .fontWeight(.medium)
+                                Text("Deletes localConfig.json after guest reset")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isProcessing)
+                } header: {
+                    Text("Guest Account Manager")
+                } footer: {
+                    Text("Tap 'Reset Guest Account', open Free Fire once to initialize the wipe, then close the game and tap 'Remove Reset Config'.")
+                }
+
+                // Section 4: Master Action Controls
                 Section {
                     Button {
                         applyActiveMods()
@@ -260,6 +304,104 @@ struct ExternalPatchHubView: View {
                 isProcessing = false
                 alertTitle = "Restore Complete"
                 alertMessage = "Restored original game files (\(restoredCount) files reverted)."
+                showingAlert = true
+            }
+        }
+    }
+
+    private func resetGuestAccount() {
+        guard !isProcessing else { return }
+        isProcessing = true
+
+        Task {
+            guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) else {
+                await MainActor.run {
+                    isProcessing = false
+                    alertTitle = "Game Not Found"
+                    alertMessage = "Could not resolve container path for \(targetBundle). Make sure the game is installed."
+                    showingAlert = true
+                }
+                return
+            }
+
+            let fileManager = FileManager.default
+            let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+            let configJSON = "{\"testCodePatch\":true,\"resetGuest\":true}\n".data(using: .utf8)!
+
+            let targetDirectories = [
+                containerURL.appendingPathComponent("Documents", isDirectory: true),
+                containerURL.appendingPathComponent("Library/Application Support", isDirectory: true),
+                containerURL.appendingPathComponent("Library/Caches", isDirectory: true)
+            ]
+
+            var writtenCount = 0
+            for dir in targetDirectories {
+                do {
+                    if !fileManager.fileExists(atPath: dir.path) {
+                        try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+                    }
+                    let targetFile = dir.appendingPathComponent("localConfig.json")
+                    try configJSON.write(to: targetFile, options: [.atomic, .completeFileProtection])
+                    writtenCount += 1
+                } catch {
+                    log("hub: failed writing reset config to \(dir.path): \(error.localizedDescription)")
+                }
+            }
+
+            await MainActor.run {
+                isProcessing = false
+                if writtenCount > 0 {
+                    alertTitle = "Reset Config Injected"
+                    alertMessage = "Successfully wrote localConfig.json to \(writtenCount) locations in \(targetBundle).\n\n1. Open Free Fire once to trigger the guest wipe.\n2. Close the game completely.\n3. Return here and tap 'Remove Reset Config'."
+                } else {
+                    alertTitle = "Injection Failed"
+                    alertMessage = "Could not write reset config. Check exploit sandbox permissions."
+                }
+                showingAlert = true
+            }
+        }
+    }
+
+    private func removeResetGuestConfig() {
+        guard !isProcessing else { return }
+        isProcessing = true
+
+        Task {
+            guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) else {
+                await MainActor.run {
+                    isProcessing = false
+                    alertTitle = "Game Not Found"
+                    alertMessage = "Could not resolve container path for \(targetBundle)."
+                    showingAlert = true
+                }
+                return
+            }
+
+            let fileManager = FileManager.default
+            let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+
+            let targetFiles = [
+                containerURL.appendingPathComponent("Documents/localConfig.json"),
+                containerURL.appendingPathComponent("Library/Application Support/localConfig.json"),
+                containerURL.appendingPathComponent("Library/Caches/localConfig.json")
+            ]
+
+            var removedCount = 0
+            for file in targetFiles {
+                if fileManager.fileExists(atPath: file.path) {
+                    do {
+                        try fileManager.removeItem(at: file)
+                        removedCount += 1
+                    } catch {
+                        log("hub: failed deleting \(file.path): \(error.localizedDescription)")
+                    }
+                }
+            }
+
+            await MainActor.run {
+                isProcessing = false
+                alertTitle = "Config Cleaned"
+                alertMessage = "Removed \(removedCount) localConfig.json files from \(targetBundle). You can now play normally with your new guest session."
                 showingAlert = true
             }
         }
