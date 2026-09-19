@@ -50,12 +50,12 @@ jobs:
           
           ls -la Payload/ByteExternal.app/
           
-          zip -r9 ByteExternal.ipa Payload/ iTunesArtwork iTunesArtwork@2x
-          cp ByteExternal.ipa 3105_ATH_Custom.ipa
+          zip -r9 ByteExternal_V1.1.1.ipa Payload/ iTunesArtwork iTunesArtwork@2x
+          cp ByteExternal_V1.1.1.ipa ByteExternal.ipa
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ByteExternal_IPA
-          path: ByteExternal.ipa
+          name: ByteExternal_V1.1.1
+          path: ByteExternal_V1.1.1.ipa
           retention-days: 14
