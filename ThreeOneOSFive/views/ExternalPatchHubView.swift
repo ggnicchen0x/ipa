@@ -418,6 +418,8 @@ struct ExternalPatchHubView: View {
     }
     
     private func log(_ message: String) {
+        #if DEBUG
         print("[ExternalPatchHub] \(message)")
+        #endif
     }
 }

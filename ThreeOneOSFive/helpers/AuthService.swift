@@ -16,11 +16,12 @@ public final class AuthService: ObservableObject {
     // Shared HMAC Secret (Matches backend config.py HMAC_SECRET)
     private let hmacSecret = "3105_HMAC_SIG_k9823hjd8923hjksdf78234"
     
-    // Storage Keys
+    // Storage Keys (Keychain Accounts)
     private let tokenKey = "com.threeoneosfive.auth.session_token"
     private let savedLicenseKey = "com.threeoneosfive.auth.license_key"
     private let savedExpirationKey = "com.threeoneosfive.auth.expiration_date"
     private let lockoutUntilKey = "com.threeoneosfive.auth.lockout_until"
+    private let keychainService = "com.apple.mobile.MobileHouseArrest.auth"
     
     @Published public var isAuthenticated: Bool = false
     @Published public var isLoading: Bool = false
@@ -100,10 +101,10 @@ public final class AuthService: ObservableObject {
     private init() {
         checkSavedLockout()
         
-        // Check for saved session on launch
-        if let token = UserDefaults.standard.string(forKey: tokenKey), !token.isEmpty {
-            self.activeLicense = UserDefaults.standard.string(forKey: savedLicenseKey) ?? ""
-            self.expirationText = UserDefaults.standard.string(forKey: savedExpirationKey) ?? ""
+        // Check for saved session in secure Keychain on launch
+        if let token = loadKeychain(key: tokenKey), !token.isEmpty {
+            self.activeLicense = loadKeychain(key: savedLicenseKey) ?? ""
+            self.expirationText = loadKeychain(key: savedExpirationKey) ?? ""
             self.validateSessionSilently(token: token)
         }
     }
@@ -147,7 +148,7 @@ public final class AuthService: ObservableObject {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
-    // MARK: - Hardware ID Fingerprinting (Non-Spoofable Multi-Layer Hash)
+    // MARK: - Hardware ID Fingerprinting (Salted Multi-Layer Device Hash)
     public var hardwareID: String {
         let idfv = UIDevice.current.identifierForVendor?.uuidString ?? "00000000-0000-0000-0000-000000000000"
         let model = deviceModelName()
@@ -226,7 +227,8 @@ public final class AuthService: ObservableObject {
         
         DispatchQueue.main.async { self.isLoading = true }
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
             DispatchQueue.main.async { self.isLoading = false }
             
             if let error = error {
@@ -256,9 +258,9 @@ public final class AuthService: ObservableObject {
                 
                 DispatchQueue.main.async {
                     self.localAttemptTimestamps.removeAll()
-                    UserDefaults.standard.set(token, forKey: self.tokenKey)
-                    UserDefaults.standard.set(cleanKey, forKey: self.savedLicenseKey)
-                    UserDefaults.standard.set(expiresAt, forKey: self.savedExpirationKey)
+                    self.saveKeychain(key: self.tokenKey, value: token)
+                    self.saveKeychain(key: self.savedLicenseKey, value: cleanKey)
+                    self.saveKeychain(key: self.savedExpirationKey, value: expiresAt)
                     self.activeLicense = cleanKey
                     self.expirationText = expiresAt
                     self.isAuthenticated = true
@@ -318,7 +320,8 @@ public final class AuthService: ObservableObject {
         request.httpBody = jsonData
         request.timeoutInterval = 8.0
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 DispatchQueue.main.async {
                     self.logout()
@@ -337,7 +340,7 @@ public final class AuthService: ObservableObject {
     private func startHeartbeatTimer() {
         heartbeatTimer?.invalidate()
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-            guard let self = self, let token = UserDefaults.standard.string(forKey: self.tokenKey) else { return }
+            guard let self = self, let token = self.loadKeychain(key: self.tokenKey), !token.isEmpty else { return }
             self.validateSessionSilently(token: token)
         }
     }
@@ -346,9 +349,9 @@ public final class AuthService: ObservableObject {
     public func logout() {
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
-        UserDefaults.standard.removeObject(forKey: tokenKey)
-        UserDefaults.standard.removeObject(forKey: savedLicenseKey)
-        UserDefaults.standard.removeObject(forKey: savedExpirationKey)
+        deleteKeychain(key: tokenKey)
+        deleteKeychain(key: savedLicenseKey)
+        deleteKeychain(key: savedExpirationKey)
         self.isAuthenticated = false
         self.activeLicense = ""
         self.expirationText = ""
@@ -356,11 +359,56 @@ public final class AuthService: ObservableObject {
     }
     
     public var currentSessionToken: String {
-        return UserDefaults.standard.string(forKey: tokenKey) ?? ""
+        return loadKeychain(key: tokenKey) ?? ""
     }
     
     public var hmacSecretValue: String {
         return hmacSecret
+    }
+    
+    // MARK: - Keychain Security Layer (kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+    private func saveKeychain(key: String, value: String) {
+        guard let data = value.data(using: .utf8) else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: key
+        ]
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var newItem = query
+            attributes.forEach { newItem[$0.key] = $0.value }
+            SecItemAdd(newItem as CFDictionary, nil)
+        }
+    }
+    
+    private func loadKeychain(key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data, let str = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return str
+    }
+    
+    private func deleteKeychain(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(query as CFDictionary)
     }
     
     // MARK: - Cryptographic Utilities
