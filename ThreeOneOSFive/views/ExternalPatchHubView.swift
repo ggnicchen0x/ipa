@@ -224,7 +224,7 @@ struct ExternalPatchHubView: View {
                     Text("Make sure the target game is closed before restoring.")
                 }
             }
-            .navigationTitle("External Menu")
+            .navigationTitle("Menu")
             .alert(alertTitle, isPresented: $showingAlert) {
                 Button("OK", role: .cancel) { }
             } message: {

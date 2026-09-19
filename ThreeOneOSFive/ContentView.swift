@@ -51,12 +51,6 @@ struct ContentView: View {
         }
         .tint(AppTheme.accent)
         .imageScale(.small)
-        .onChange(of: patchDraftCoordinator.request?.id) { requestID in
-            if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
-        }
-        .onChange(of: patchDraftCoordinator.importRequest?.id) { requestID in
-            if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
-        }
         .onChange(of: developerModeEnabled) { _ in
             tabNavigation.reconcileSelection(with: featureVisibility)
         }
@@ -121,39 +115,14 @@ struct ContentView: View {
     @ViewBuilder
     private func sectionContent(_ section: AppSection) -> some View {
         switch section {
-        case .externalHub:
+        case .menu:
             ExternalPatchHubView()
-        case .home:
-            RepositoryHomeView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
         case .new:
-            RepositoryNewView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .sources:
-            RepositorySourcesView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .installed:
-            PatchProjectsView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .files:
-            AppDataBrowserView(
-                tabSession: filesTabSession,
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .search:
-            RepositorySearchView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            UserManualView()
+        case .devInfo:
+            DevInfoView()
+        case .account:
+            UserAccountView()
         }
     }
 
@@ -189,7 +158,7 @@ struct ContentView: View {
         let selected = AppSection(rawValue: tabNavigation.selectedTab)
         return selected.flatMap {
             featureVisibility.isVisible($0) ? $0 : nil
-        } ?? .home
+        } ?? .menu
     }
 
     private func openSettings() {
@@ -223,25 +192,19 @@ private struct CompactTabLabel: View {
 private extension AppSection {
     var titleKey: String {
         switch self {
-        case .externalHub: return "External Menu"
-        case .home: return "tab.home"
-        case .new: return "tab.new"
-        case .sources: return "tab.sources"
-        case .installed: return "tab.installed"
-        case .files: return "tab.files"
-        case .search: return "tab.search"
+        case .menu: return "Menu"
+        case .new: return "New"
+        case .devInfo: return "Dev Info"
+        case .account: return "Account"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .externalHub: return "gamecontroller.fill"
-        case .home: return "house.fill"
-        case .new: return "clock.fill"
-        case .sources: return "shippingbox.fill"
-        case .installed: return "tray.full.fill"
-        case .files: return "folder.fill"
-        case .search: return "magnifyingglass"
+        case .menu: return "slider.horizontal.3"
+        case .new: return "book.pages.fill"
+        case .devInfo: return "bubble.left.and.bubble.right.fill"
+        case .account: return "person.crop.circle.fill"
         }
     }
 }

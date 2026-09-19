@@ -1,13 +1,10 @@
 import Foundation
 
 enum AppSection: Int, CaseIterable, Identifiable {
-    case externalHub
-    case home
-    case new
-    case sources
-    case installed
-    case files
-    case search
+    case menu = 0
+    case new = 1
+    case devInfo = 2
+    case account = 3
 
     var id: Int { rawValue }
 }
@@ -44,16 +41,11 @@ struct FeatureVisibility: Equatable {
     }
 
     var visibleSections: [AppSection] {
-        AppSection.allCases.filter(isVisible)
+        AppSection.allCases
     }
 
     func isVisible(_ section: AppSection) -> Bool {
-        switch section {
-        case .files:
-            return developerModeEnabled
-        default:
-            return true
-        }
+        true
     }
 }
 
@@ -90,7 +82,7 @@ struct AppTabNavigationState: Equatable {
     mutating func reconcileSelection(with visibility: FeatureVisibility) {
         guard let selectedSection = AppSection(rawValue: selectedTab),
               visibility.isVisible(selectedSection) else {
-            selectedTab = AppSection.home.rawValue
+            selectedTab = AppSection.menu.rawValue
             return
         }
     }
