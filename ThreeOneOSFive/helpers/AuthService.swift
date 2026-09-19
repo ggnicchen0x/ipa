@@ -7,6 +7,10 @@ public final class AuthService: ObservableObject {
     public static let shared = AuthService()
     
     // Server Configuration - Live Bot Hosting Python egg URL
+    // App Version - Official Initial Release
+    public let appVersion: String = "1.1.1"
+    
+    // Server Configuration - Live Bot Hosting Python egg URL
     public var serverBaseURL: String = "http://fi9.bot-hosting.cloud:25808"
     
     // Shared HMAC Secret (Matches backend config.py HMAC_SECRET)
@@ -15,6 +19,7 @@ public final class AuthService: ObservableObject {
     // Storage Keys
     private let tokenKey = "com.threeoneosfive.auth.session_token"
     private let savedLicenseKey = "com.threeoneosfive.auth.license_key"
+    private let lockoutUntilKey = "com.threeoneosfive.auth.lockout_until"
     
     @Published public var isAuthenticated: Bool = false
     @Published public var isLoading: Bool = false
@@ -22,14 +27,61 @@ public final class AuthService: ObservableObject {
     @Published public var activeLicense: String = ""
     @Published public var expirationText: String = ""
     
+    // Spam Prevention & Lockout State (5 taps in 1 min -> 10 min timeout)
+    @Published public var isLockedOut: Bool = false
+    @Published public var lockoutSecondsRemaining: Int = 0
+    
     private var heartbeatTimer: Timer?
+    private var lockoutTimer: Timer?
+    private var localAttemptTimestamps: [Date] = []
     
     private init() {
+        checkSavedLockout()
+        
         // Check for saved session on launch
         if let token = UserDefaults.standard.string(forKey: tokenKey), !token.isEmpty {
             self.activeLicense = UserDefaults.standard.string(forKey: savedLicenseKey) ?? ""
             self.validateSessionSilently(token: token)
         }
+    }
+    
+    // MARK: - Lockout Management
+    private func checkSavedLockout() {
+        let lockoutUntil = UserDefaults.standard.double(forKey: lockoutUntilKey)
+        let now = Date().timeIntervalSince1970
+        if lockoutUntil > now {
+            startLockout(duration: Int(lockoutUntil - now))
+        }
+    }
+    
+    public func startLockout(duration: Int = 600) {
+        let unlockTime = Date().timeIntervalSince1970 + Double(duration)
+        UserDefaults.standard.set(unlockTime, forKey: lockoutUntilKey)
+        
+        DispatchQueue.main.async {
+            self.isLockedOut = true
+            self.lockoutSecondsRemaining = duration
+            
+            self.lockoutTimer?.invalidate()
+            self.lockoutTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+                guard let self = self else { return }
+                if self.lockoutSecondsRemaining > 1 {
+                    self.lockoutSecondsRemaining -= 1
+                } else {
+                    self.isLockedOut = false
+                    self.lockoutSecondsRemaining = 0
+                    UserDefaults.standard.removeObject(forKey: self.lockoutUntilKey)
+                    timer.invalidate()
+                    self.lockoutTimer = nil
+                }
+            }
+        }
+    }
+    
+    public var formattedLockoutTime: String {
+        let minutes = lockoutSecondsRemaining / 60
+        let seconds = lockoutSecondsRemaining % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
     
     // MARK: - Hardware ID Fingerprinting (Non-Spoofable Multi-Layer Hash)
@@ -54,6 +106,23 @@ public final class AuthService: ObservableObject {
     
     // MARK: - Login Action
     public func login(licenseKey: String, completion: @escaping (Bool, String?) -> Void) {
+        if isLockedOut {
+            completion(false, "Spam detected: Do not repeatedly tap login. You are timed out. Please wait \(formattedLockoutTime).")
+            return
+        }
+        
+        let now = Date()
+        let oneMinuteAgo = now.addingTimeInterval(-60)
+        localAttemptTimestamps = localAttemptTimestamps.filter { $0 > oneMinuteAgo }
+        localAttemptTimestamps.append(now)
+        
+        // If user tapped 5 times locally under 1 minute, enforce 10-minute timeout
+        if localAttemptTimestamps.count >= 5 {
+            startLockout(duration: 600)
+            completion(false, "Spam detected: Do not repeatedly tap login. You have been timed out for 10 minutes. Please wait before retrying.")
+            return
+        }
+        
         let cleanKey = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanKey.isEmpty else {
             completion(false, "Please enter a valid license key.")
@@ -76,6 +145,7 @@ public final class AuthService: ObservableObject {
             "device_name": UIDevice.current.name,
             "device_model": deviceModelName(),
             "os_version": "iOS \(UIDevice.current.systemVersion)",
+            "app_version": self.appVersion,
             "timestamp": timestamp,
             "signature": signature
         ]
@@ -122,6 +192,7 @@ public final class AuthService: ObservableObject {
                 let expiresAt = json["expires_at"] as? String ?? "LIFETIME"
                 
                 DispatchQueue.main.async {
+                    self.localAttemptTimestamps.removeAll()
                     UserDefaults.standard.set(token, forKey: self.tokenKey)
                     UserDefaults.standard.set(cleanKey, forKey: self.savedLicenseKey)
                     self.activeLicense = cleanKey
@@ -129,6 +200,25 @@ public final class AuthService: ObservableObject {
                     self.isAuthenticated = true
                     self.startHeartbeatTimer()
                     completion(true, nil)
+                }
+            } else if httpResponse.statusCode == 426 {
+                // Update Required
+                let detail = json["detail"] as? String ?? "New update detected! Please download the latest update from Discord: https://discord.gg/KPJzd42rme"
+                DispatchQueue.main.async {
+                    completion(false, detail)
+                }
+            } else if httpResponse.statusCode == 503 {
+                // Server Maintenance / Paused
+                let detail = json["detail"] as? String ?? "Server maintenance is currently in progress. Please check Discord announcements for status updates: https://discord.gg/KPJzd42rme"
+                DispatchQueue.main.async {
+                    completion(false, detail)
+                }
+            } else if httpResponse.statusCode == 429 {
+                // Rate limit / Spam 10-min lockout triggered by server
+                let detail = json["detail"] as? String ?? "Spam detected: Do not repeatedly tap login. You have been timed out for 10 minutes."
+                self.startLockout(duration: 600)
+                DispatchQueue.main.async {
+                    completion(false, detail)
                 }
             } else {
                 let detail = json["detail"] as? String ?? "Authentication failed."
@@ -151,6 +241,7 @@ public final class AuthService: ObservableObject {
         let requestBody: [String: Any] = [
             "token": token,
             "device_hash": hwid,
+            "app_version": self.appVersion,
             "timestamp": timestamp,
             "signature": signature
         ]

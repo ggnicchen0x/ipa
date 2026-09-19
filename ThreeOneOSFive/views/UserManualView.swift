@@ -11,7 +11,7 @@ struct UserManualView: View {
                         Text("USER MANUAL")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(AppTheme.accent)
-                        Text("Free Fire Max Guide")
+                        Text("BYTE IOS External Guide")
                             .font(.title2.weight(.bold))
                         Text("Follow the exact timing below to activate external modifications safely.")
                             .font(.subheadline)

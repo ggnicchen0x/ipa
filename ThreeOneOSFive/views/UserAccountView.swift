@@ -23,7 +23,7 @@ struct UserAccountView: View {
                             Text(UIDevice.current.name)
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-                            Text("Free Fire Max Mod User")
+                            Text("BYTE IOS External User")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

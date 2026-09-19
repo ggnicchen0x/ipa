@@ -12,9 +12,11 @@ fileprivate extension Color {
 public struct LoginView: View {
     @ObservedObject private var authService = AuthService.shared
     @State private var licenseKeyInput: String = ""
+    @State private var alertTitle: String = "Authentication Failed"
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
     @State private var isPasting: Bool = false
+    @State private var lastTapTime: Date = Date.distantPast
     
     public init() {}
     
@@ -54,20 +56,46 @@ public struct LoginView: View {
                                 .foregroundColor(.orange)
                         }
                         
-                        Text("3105 SECURITY GATEWAY")
+                        Text("BYTE IOS SECURITY GATEWAY")
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundColor(.orange)
                             .tracking(2.0)
                         
-                        Text("Free Fire Max External")
+                        Text("BYTE IOS EXTERNAL")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
-                        Text("Hardware Locked Private Access")
+                        Text("Hardware Locked Private Access • v\(authService.appVersion)")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(Color.white.opacity(0.5))
                     }
                     .padding(.bottom, 10)
+                    
+                    // Spam Lockout Warning Banner
+                    if authService.isLockedOut {
+                        HStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(Color(hex: 0xf59e0b))
+                                .font(.system(size: 20))
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("SPAM TIMEOUT ACTIVE")
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundColor(Color(hex: 0xf59e0b))
+                                Text("Repeated login taps detected. Cooldown in progress: \(authService.formattedLockoutTime)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(Color.white.opacity(0.8))
+                            }
+                            Spacer()
+                        }
+                        .padding(14)
+                        .background(Color(hex: 0xf59e0b).opacity(0.12))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color(hex: 0xf59e0b).opacity(0.35), lineWidth: 1)
+                        )
+                    }
                     
                     // Hardware Fingerprint Info Box
                     VStack(alignment: .leading, spacing: 10) {
@@ -153,8 +181,9 @@ public struct LoginView: View {
                                 .foregroundColor(.white)
                                 .autocapitalization(.allCharacters)
                                 .disableAutocorrection(true)
+                                .disabled(authService.isLockedOut)
                             
-                            if !licenseKeyInput.isEmpty {
+                            if !licenseKeyInput.isEmpty && !authService.isLockedOut {
                                 Button(action: { licenseKeyInput = "" }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundColor(.white.opacity(0.4))
@@ -181,11 +210,27 @@ public struct LoginView: View {
                             .stroke(Color.white.opacity(0.08), lineWidth: 1)
                     )
                     
-                    // Activate Button
+                    // Activate Button with Lockout & Debounce
                     Button(action: {
+                        let now = Date()
+                        if now.timeIntervalSince(lastTapTime) < 1.5 {
+                            // Debounce rapid clicking
+                            return
+                        }
+                        lastTapTime = now
+                        
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         authService.login(licenseKey: licenseKeyInput) { success, error in
                             if !success, let error = error {
+                                if error.contains("New update") || error.contains("Update Required") {
+                                    alertTitle = "New Update Detected"
+                                } else if error.contains("Server Maintenance") || error.contains("maintenance") || error.contains("paused") {
+                                    alertTitle = "Service Under Maintenance"
+                                } else if error.contains("Spam") || error.contains("timed out") {
+                                    alertTitle = "Security Warning: Spam Detected"
+                                } else {
+                                    alertTitle = "Authentication Failed"
+                                }
                                 alertMessage = error
                                 showAlert = true
                             }
@@ -195,6 +240,11 @@ public struct LoginView: View {
                             if authService.isLoading {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else if authService.isLockedOut {
+                                Image(systemName: "clock.badge.exclamationmark.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                Text("LOCKED OUT (\(authService.formattedLockoutTime))")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
                             } else {
                                 Image(systemName: "arrow.right.circle.fill")
                                     .font(.system(size: 16, weight: .bold))
@@ -204,13 +254,13 @@ public struct LoginView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
-                        .background(Color.orange)
+                        .background(authService.isLockedOut ? Color(hex: 0x7f1d1d) : Color.orange)
                         .foregroundColor(.white)
                         .cornerRadius(12)
-                        .shadow(color: Color.orange.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: authService.isLockedOut ? Color.red.opacity(0.3) : Color.orange.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(authService.isLoading || licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity((licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.6 : 1.0)
+                    .disabled(authService.isLoading || authService.isLockedOut || licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .opacity((licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || authService.isLockedOut) ? 0.6 : 1.0)
                     
                     // Support Links
                     VStack(spacing: 8) {
@@ -247,11 +297,24 @@ public struct LoginView: View {
             }
         }
         .alert(isPresented: $showAlert) {
-            Alert(
-                title: Text("Authentication Failed"),
-                message: Text(alertMessage),
-                dismissButton: .default(Text("OK"))
-            )
+            if alertTitle == "New Update Detected" || alertTitle == "Service Under Maintenance" {
+                return Alert(
+                    title: Text(alertTitle),
+                    message: Text(alertMessage),
+                    primaryButton: .default(Text("Open Discord")) {
+                        if let url = URL(string: "https://discord.gg/KPJzd42rme") {
+                            UIApplication.shared.open(url)
+                        }
+                    },
+                    secondaryButton: .cancel(Text("Close"))
+                )
+            } else {
+                return Alert(
+                    title: Text(alertTitle),
+                    message: Text(alertMessage),
+                    dismissButton: .default(Text("Understood"))
+                )
+            }
         }
     }
 }
