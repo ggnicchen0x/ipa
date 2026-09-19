@@ -74,7 +74,7 @@ struct ExternalPatchHubView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Aim Drag")
                                     .fontWeight(.medium)
-                                Text("Patches cache_res in gamesassetbundles")
+                                Text("Patches avatar assetindexer in gameassetbundles")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -243,7 +243,7 @@ struct ExternalPatchHubView: View {
                 let name = project.name.lowercased()
 
                 var shouldApply = false
-                if aimStableEnabled && (name.contains("aim") || name.contains("box") || name.contains("ffth")) {
+                if aimStableEnabled && (name.contains("avatar") || name.contains("aim") || name.contains("box") || name.contains("ffth")) {
                     shouldApply = true
                 }
                 if fps144Enabled && name.contains("144") {
@@ -252,7 +252,7 @@ struct ExternalPatchHubView: View {
                 if magicBulletEnabled && (name.contains("magic") || name.contains("athmagic")) {
                     shouldApply = true
                 }
-                if bodyDragEnabled && (name.contains("drag") || name.contains("athdrag") || name.contains("athbody")) {
+                if bodyDragEnabled && (name.contains("athdrag") || name.contains("athbody") || (name.contains("drag") && !name.contains("avatar") && !name.contains("aim"))) {
                     shouldApply = true
                 }
                 if cleanCacheEnabled && (name.contains("cleann") || name.contains("cash")) {
