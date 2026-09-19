@@ -40,20 +40,28 @@ public struct LoginView: View {
                     // App Logo / Shield Header
                     VStack(spacing: 12) {
                         ZStack {
-                            Circle()
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(Color(hex: 0x1c1c1e))
                                 .frame(width: 80, height: 80)
                                 .overlay(
-                                    Circle()
-                                        .stroke(AppTheme.accent.opacity(0.35), lineWidth: 1.5)
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(AppTheme.accent.opacity(0.4), lineWidth: 1.5)
                                 )
-                                .shadow(color: AppTheme.accent.opacity(0.25), radius: 10, x: 0, y: 4)
+                                .shadow(color: AppTheme.accent.opacity(0.3), radius: 12, x: 0, y: 4)
                             
-                            Image(systemName: "lock.shield.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 36, height: 36)
-                                .foregroundColor(AppTheme.accent)
+                            if let logoImg = UIImage(named: "AppLogo") ?? UIImage(named: "AppIcon60x60@2x") ?? Bundle.main.path(forResource: "AppLogo", ofType: "png").flatMap(UIImage.init(contentsOfFile:)) {
+                                Image(uiImage: logoImg)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 76, height: 76)
+                                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            } else {
+                                Image(systemName: "lock.shield.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 36, height: 36)
+                                    .foregroundColor(AppTheme.accent)
+                            }
                         }
                         
                         Text("BYTE IOS SECURITY GATEWAY")
