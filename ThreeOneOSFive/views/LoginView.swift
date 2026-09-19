@@ -184,7 +184,7 @@ public struct LoginView: View {
                             Image(systemName: "key.fill")
                                 .foregroundColor(AppTheme.accent.opacity(0.8))
                             
-                            TextField("3105-MAX-XXXX-XXXX-XXXX", text: $licenseKeyInput)
+                            TextField("BYTE-XXXX-XXXX-XXXX", text: $licenseKeyInput)
                                 .font(.system(size: 15, weight: .medium, design: .monospaced))
                                 .foregroundColor(.white)
                                 .autocapitalization(.allCharacters)
