@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct ContentView: View {
+    @ObservedObject private var authService = AuthService.shared
     @Environment(\.appLanguage) private var language
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var patchDraftCoordinator: PatchDraftCoordinator
@@ -42,6 +43,16 @@ struct ContentView: View {
     }
 
     var body: some View {
+        Group {
+            if authService.isAuthenticated {
+                mainLayout
+            } else {
+                LoginView()
+            }
+        }
+    }
+
+    private var mainLayout: some View {
         Group {
             if horizontalSizeClass == .regular {
                 regularLayout

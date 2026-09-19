@@ -82,6 +82,37 @@ struct UserAccountView: View {
                 } header: {
                     Text("Security & Core Status")
                 }
+
+                Section {
+                    LabeledContent {
+                        Text(AuthService.shared.activeLicense.isEmpty ? "Authorized Session" : AuthService.shared.activeLicense)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(AppTheme.accent)
+                    } label: {
+                        Label("License Key", systemImage: "key.fill")
+                    }
+
+                    LabeledContent {
+                        Text(AuthService.shared.expirationText.isEmpty ? "LIFETIME" : AuthService.shared.expirationText)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("Plan Expiry", systemImage: "clock.badge.checkmark")
+                    }
+
+                    Button(role: .destructive) {
+                        AuthService.shared.logout()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label("Sign Out / Switch License", systemImage: "rectangle.portrait.and.arrow.right")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                        }
+                    }
+                } header: {
+                    Text("License & Authentication")
+                }
             }
             .navigationTitle("Account")
         }
