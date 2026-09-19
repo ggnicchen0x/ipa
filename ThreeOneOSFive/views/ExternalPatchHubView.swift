@@ -235,8 +235,9 @@ struct ExternalPatchHubView: View {
         statusMessage = "Applying active mods..."
 
         Task {
-            // Match corresponding bundled .3105 files in patchStore
             var appliedCount = 0
+            var errorDetails: [String] = []
+
             for item in patchStore.items {
                 guard let project = item.project else { continue }
                 let name = project.name.lowercased()
@@ -259,10 +260,40 @@ struct ExternalPatchHubView: View {
                 }
 
                 if shouldApply {
+                    // Adapt the project to target the selected game version only
+                    var adaptedProject = project
+                    adaptedProject.bundleIdentifiers = [targetBundle]
+                    
+                    // Filter or map directories to the selected bundle
+                    var seenDirs = Set<String>()
+                    adaptedProject.directories = project.directories
+                        .map { dir in
+                            var d = dir
+                            d.bundleID = targetBundle
+                            return d
+                        }
+                        .filter { seenDirs.insert($0.relativePath).inserted }
+
+                    // Filter or map rules to the selected bundle
+                    var seenRules = Set<String>()
+                    adaptedProject.rules = project.rules
+                        .map { rule in
+                            var r = rule
+                            r.bundleID = targetBundle
+                            return r
+                        }
+                        .filter { seenRules.insert($0.relativePath).inserted }
+
+                    // If previously applied, restore first so re-applying updates cleanly
+                    if let existingReceipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
+                        try? DevicePatchService.restore(receipt: existingReceipt, allowChangedTargets: true)
+                    }
+
                     do {
-                        _ = try DevicePatchService.apply(project: project)
+                        _ = try DevicePatchService.apply(project: adaptedProject)
                         appliedCount += 1
                     } catch {
+                        errorDetails.append("\(project.name): \(error.localizedDescription)")
                         log("hub: apply failed for \(project.name): \(error.localizedDescription)")
                     }
                 }
@@ -270,8 +301,16 @@ struct ExternalPatchHubView: View {
 
             await MainActor.run {
                 isProcessing = false
-                alertTitle = "Mod Application"
-                alertMessage = "Successfully processed active mods (\(appliedCount) applied) to \(targetBundle)."
+                if appliedCount > 0 {
+                    alertTitle = "Mod Application"
+                    alertMessage = "Successfully applied \(appliedCount) active mods to \(targetBundle)."
+                } else if !errorDetails.isEmpty {
+                    alertTitle = "Mod Application Failed"
+                    alertMessage = "Error applying to \(targetBundle):\n" + errorDetails.joined(separator: "\n")
+                } else {
+                    alertTitle = "No Mods Enabled"
+                    alertMessage = "Toggle on at least one mod (like Aim Drag) before tapping Apply."
+                }
                 showingAlert = true
             }
         }
