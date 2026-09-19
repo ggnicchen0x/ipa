@@ -72,9 +72,9 @@ struct ExternalPatchHubView: View {
                     Toggle(isOn: $aimStableEnabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Box + Aim Stable")
+                                Text("Aim Drag")
                                     .fontWeight(.medium)
-                                Text("Replaces Assembly-CSharp & localConfig")
+                                Text("Patches cache_res in gamesassetbundles")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
