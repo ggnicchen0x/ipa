@@ -98,7 +98,7 @@ public final class AuthService: ObservableObject {
     @Published public var updateDetected: Bool = false
     @Published public var updateTitle: String = "New Update Available"
     @Published public var updateMessage: String = ""
-    @Published public var updateDownloadURL: String = "https://github.com/nicchennnnn/External/releases"
+    @Published public var updateDownloadURL: String = "https://github.com/nicchen0xf/Swift-ios/releases"
     
     private var heartbeatTimer: Timer?
     private var lockoutTimer: Timer?
@@ -292,11 +292,11 @@ public final class AuthService: ObservableObject {
             if httpResponse.statusCode == 426 {
                 var notes = ""
                 var latestVer = ""
-                var dUrl = "https://github.com/nicchennnnn/External/releases"
+                var dUrl = "https://github.com/nicchen0xf/Swift-ios/releases"
                 if let json = parsedJSON {
                     latestVer = json["latest_version"] as? String ?? ""
                     notes = json["release_notes"] as? String ?? (json["detail"] as? String ?? "")
-                    dUrl = json["download_url"] as? String ?? "https://github.com/nicchennnnn/External/releases"
+                    dUrl = json["download_url"] as? String ?? "https://github.com/nicchen0xf/Swift-ios/releases"
                 }
                 if notes.isEmpty {
                     notes = "A new update is available. Please download the latest version."
@@ -371,7 +371,7 @@ public final class AuthService: ObservableObject {
                 let latestVer = json["latest_version"] as? String ?? ""
                 let forceUpdate = json["force_update"] as? Bool ?? false
                 let releaseNotes = json["release_notes"] as? String ?? ""
-                let downloadUrl = json["download_url"] as? String ?? "https://github.com/nicchennnnn/External/releases"
+                let downloadUrl = json["download_url"] as? String ?? "https://github.com/nicchen0xf/Swift-ios/releases"
                 
                 let isOlder = self.isClientVersionOlder(clientVer: self.appVersion, targetVer: latestVer)
                 let isMismatch = (self.appVersion != latestVer)
@@ -380,7 +380,7 @@ public final class AuthService: ObservableObject {
                     DispatchQueue.main.async {
                         self.updateTitle = "New Update Available \(latestVer.isEmpty ? "" : latestVer)"
                         self.updateMessage = releaseNotes.isEmpty ? "A new update is available. Please download the latest version." : releaseNotes
-                        self.updateDownloadURL = downloadUrl.isEmpty ? "https://github.com/nicchennnnn/External/releases" : downloadUrl
+                        self.updateDownloadURL = downloadUrl.isEmpty ? "https://github.com/nicchen0xf/Swift-ios/releases" : downloadUrl
                         self.updateDetected = true
                         completion?(true)
                     }
@@ -439,11 +439,11 @@ public final class AuthService: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 426 {
                 var notes = ""
                 var latestVer = ""
-                var dUrl = "https://github.com/nicchennnnn/External/releases"
+                var dUrl = "https://github.com/nicchen0xf/Swift-ios/releases"
                 if let data = data, let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
                     latestVer = json["latest_version"] as? String ?? ""
                     notes = json["release_notes"] as? String ?? (json["detail"] as? String ?? "")
-                    dUrl = json["download_url"] as? String ?? "https://github.com/nicchennnnn/External/releases"
+                    dUrl = json["download_url"] as? String ?? "https://github.com/nicchen0xf/Swift-ios/releases"
                 }
                 let cleanNotes = notes.isEmpty ? "A new update is available. Please download the latest version." : notes
                 let cleanVer = latestVer

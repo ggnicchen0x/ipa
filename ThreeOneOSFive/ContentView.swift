@@ -56,7 +56,7 @@ struct ContentView: View {
                 title: Text(authService.updateTitle),
                 message: Text(authService.updateMessage),
                 dismissButton: .default(Text("OK")) {
-                    let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchennnnn/External/releases" : authService.updateDownloadURL
+                    let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchen0xf/Swift-ios/releases" : authService.updateDownloadURL
                     if let url = URL(string: target) {
                         UIApplication.shared.open(url)
                     }
