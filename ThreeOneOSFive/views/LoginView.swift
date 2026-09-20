@@ -331,14 +331,25 @@ public struct LoginView: View {
                     licenseKeyInput = saved
                 }
             }
-            if authService.updateDetected {
+            if authService.maintenanceDetected {
+                alertTitle = "Service Under Maintenance"
+                alertMessage = authService.maintenanceMessage
+                showAlert = true
+            } else if authService.updateDetected {
                 alertTitle = authService.updateTitle
                 alertMessage = authService.updateMessage
                 showAlert = true
             }
         }
+        .onReceive(authService.$maintenanceDetected) { isMaintenance in
+            if isMaintenance {
+                alertTitle = "Service Under Maintenance"
+                alertMessage = authService.maintenanceMessage
+                showAlert = true
+            }
+        }
         .onReceive(authService.$updateDetected) { detected in
-            if detected {
+            if detected && !authService.maintenanceDetected {
                 alertTitle = authService.updateTitle
                 alertMessage = authService.updateMessage
                 showAlert = true

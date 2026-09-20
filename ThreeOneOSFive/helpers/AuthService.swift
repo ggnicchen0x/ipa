@@ -100,6 +100,10 @@ public final class AuthService: ObservableObject {
     @Published public var updateMessage: String = ""
     @Published public var updateDownloadURL: String = "https://github.com/nicchen0xf/Swift-ios/releases"
     
+    // Global Maintenance / Paused State
+    @Published public var maintenanceDetected: Bool = false
+    @Published public var maintenanceMessage: String = "Panel is Under Maintainance."
+    
     private var heartbeatTimer: Timer?
     private var lockoutTimer: Timer?
     private var localAttemptTimestamps: [Date] = []
@@ -314,6 +318,21 @@ public final class AuthService: ObservableObject {
                 return
             }
             
+            // Handle HTTP 503 Service Maintenance
+            if httpResponse.statusCode == 503 {
+                var maintMsg = "Panel is Under Maintainance."
+                if let json = parsedJSON {
+                    maintMsg = json["message"] as? String ?? (json["detail"] as? String ?? maintMsg)
+                }
+                let cleanMaint = maintMsg
+                DispatchQueue.main.async {
+                    self.maintenanceMessage = cleanMaint
+                    self.maintenanceDetected = true
+                    completion(false, cleanMaint)
+                }
+                return
+            }
+            
             // Extract detailed error message from JSON or Raw Response
             var errorMessage: String = ""
             if let json = parsedJSON {
@@ -368,6 +387,22 @@ public final class AuthService: ObservableObject {
                 return
             }
             if let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                // 1. Check Global Server Maintenance
+                if let appStatus = json["app_status"] as? String, appStatus == "PAUSED" {
+                    let msg = json["maintenance_message"] as? String ?? "Panel is Under Maintainance."
+                    DispatchQueue.main.async {
+                        self.maintenanceMessage = msg
+                        self.maintenanceDetected = true
+                        completion?(true)
+                    }
+                    return
+                } else {
+                    DispatchQueue.main.async {
+                        self.maintenanceDetected = false
+                    }
+                }
+                
+                // 2. Check Version Update
                 let latestVer = json["latest_version"] as? String ?? ""
                 let forceUpdate = json["force_update"] as? Bool ?? false
                 let releaseNotes = json["release_notes"] as? String ?? ""
@@ -453,6 +488,20 @@ public final class AuthService: ObservableObject {
                     self.updateMessage = cleanNotes
                     self.updateDownloadURL = cleanDUrl
                     self.updateDetected = true
+                    self.logout()
+                }
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 503 {
+                var maintMsg = "Panel is Under Maintainance."
+                if let data = data, let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                    maintMsg = json["message"] as? String ?? (json["detail"] as? String ?? maintMsg)
+                }
+                let cleanMaint = maintMsg
+                DispatchQueue.main.async {
+                    self.maintenanceMessage = cleanMaint
+                    self.maintenanceDetected = true
                     self.logout()
                 }
                 return
