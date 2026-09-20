@@ -46,23 +46,23 @@ struct ContentView: View {
         Group {
             if authService.isAuthenticated {
                 mainLayout
+                    .alert(isPresented: $authService.updateDetected) {
+                        Alert(
+                            title: Text(authService.updateTitle),
+                            message: Text(authService.updateMessage),
+                            dismissButton: .default(Text("OK")) {
+                                let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchen0xf/Swift-ios/releases" : authService.updateDownloadURL
+                                if let url = URL(string: target) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                        )
+                    }
             } else {
                 LoginView()
             }
         }
         .preferredColorScheme(.dark)
-        .alert(isPresented: $authService.updateDetected) {
-            Alert(
-                title: Text(authService.updateTitle),
-                message: Text(authService.updateMessage),
-                dismissButton: .default(Text("OK")) {
-                    let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchen0xf/Swift-ios/releases" : authService.updateDownloadURL
-                    if let url = URL(string: target) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-            )
-        }
     }
 
     private var mainLayout: some View {

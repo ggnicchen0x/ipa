@@ -9,12 +9,23 @@ fileprivate extension Color {
     }
 }
 
+public struct ActiveAlert: Identifiable {
+    public let id = UUID()
+    public let title: String
+    public let message: String
+    public let isUpdate: Bool
+    
+    public init(title: String, message: String, isUpdate: Bool = false) {
+        self.title = title
+        self.message = message
+        self.isUpdate = isUpdate
+    }
+}
+
 public struct LoginView: View {
     @ObservedObject private var authService = AuthService.shared
     @State private var licenseKeyInput: String = ""
-    @State private var alertTitle: String = "Authentication Failed"
-    @State private var alertMessage: String = ""
-    @State private var showAlert: Bool = false
+    @State private var activeAlert: ActiveAlert? = nil
     @State private var isPasting: Bool = false
     @State private var lastTapTime: Date = Date.distantPast
     
@@ -46,7 +57,7 @@ public struct LoginView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                                         .stroke(AppTheme.accent.opacity(0.4), lineWidth: 1.5)
-                                )
+                                 )
                                 .shadow(color: AppTheme.accent.opacity(0.3), radius: 12, x: 0, y: 4)
                             
                             if let logoImg = UIImage(named: "AppLogo") ?? UIImage(named: "AppIcon60x60@2x") ?? Bundle.main.path(forResource: "AppLogo", ofType: "png").flatMap(UIImage.init(contentsOfFile:)) {
@@ -79,17 +90,43 @@ public struct LoginView: View {
                     }
                     .padding(.bottom, 10)
                     
+                    // Live Maintenance Warning Banner
+                    if authService.maintenanceDetected {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(Color(hex: 0xf59e0b))
+                                .font(.system(size: 22))
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("SERVICE UNDER MAINTENANCE")
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundColor(Color(hex: 0xf59e0b))
+                                Text(authService.maintenanceMessage.isEmpty ? "Panel is Under Maintainance." : authService.maintenanceMessage)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(Color.white.opacity(0.9))
+                            }
+                            Spacer()
+                        }
+                        .padding(14)
+                        .background(Color(hex: 0xf59e0b).opacity(0.16))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color(hex: 0xf59e0b).opacity(0.45), lineWidth: 1)
+                        )
+                    }
+                    
                     // Spam Lockout Warning Banner
                     if authService.isLockedOut {
                         HStack(spacing: 12) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(Color(hex: 0xf59e0b))
+                                .foregroundColor(Color(hex: 0xef4444))
                                 .font(.system(size: 20))
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("SPAM TIMEOUT ACTIVE")
                                     .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                    .foregroundColor(Color(hex: 0xf59e0b))
+                                    .foregroundColor(Color(hex: 0xef4444))
                                 Text("Repeated login taps detected. Cooldown in progress: \(authService.formattedLockoutTime)")
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(Color.white.opacity(0.8))
@@ -97,11 +134,11 @@ public struct LoginView: View {
                             Spacer()
                         }
                         .padding(14)
-                        .background(Color(hex: 0xf59e0b).opacity(0.12))
+                        .background(Color(hex: 0xef4444).opacity(0.12))
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color(hex: 0xf59e0b).opacity(0.35), lineWidth: 1)
+                                .stroke(Color(hex: 0xef4444).opacity(0.35), lineWidth: 1)
                         )
                     }
                     
@@ -221,30 +258,54 @@ public struct LoginView: View {
                     // Activate Button with Lockout & Debounce
                     Button(action: {
                         let now = Date()
-                        if now.timeIntervalSince(lastTapTime) < 1.5 {
-                            // Debounce rapid clicking
+                        if now.timeIntervalSince(lastTapTime) < 1.0 {
                             return
                         }
                         lastTapTime = now
                         
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        
+                        // If maintenance is already known
+                        if authService.maintenanceDetected {
+                            activeAlert = ActiveAlert(
+                                title: "Service Under Maintenance",
+                                message: authService.maintenanceMessage.isEmpty ? "Panel is Under Maintainance." : authService.maintenanceMessage,
+                                isUpdate: false
+                            )
+                            return
+                        }
+                        
                         authService.login(licenseKey: licenseKeyInput) { success, error in
                             if !success, let error = error {
                                 if error == "UPDATE_REQUIRED" || authService.updateDetected {
-                                    alertTitle = authService.updateTitle
-                                    alertMessage = authService.updateMessage
-                                    showAlert = true
+                                    activeAlert = ActiveAlert(
+                                        title: authService.updateTitle,
+                                        message: authService.updateMessage,
+                                        isUpdate: true
+                                    )
                                     return
                                 }
-                                if error.contains("Server Maintenance") || error.contains("maintenance") || error.contains("paused") {
-                                    alertTitle = "Service Under Maintenance"
+                                
+                                if authService.maintenanceDetected || error.contains("Maintenance") || error.contains("maintenance") || error.contains("paused") {
+                                    let msg = authService.maintenanceMessage.isEmpty ? error : authService.maintenanceMessage
+                                    activeAlert = ActiveAlert(
+                                        title: "Service Under Maintenance",
+                                        message: msg,
+                                        isUpdate: false
+                                    )
                                 } else if error.contains("Spam") || error.contains("timed out") {
-                                    alertTitle = "Security Warning: Spam Detected"
+                                    activeAlert = ActiveAlert(
+                                        title: "Security Warning: Spam Detected",
+                                        message: error,
+                                        isUpdate: false
+                                    )
                                 } else {
-                                    alertTitle = "Authentication Failed"
+                                    activeAlert = ActiveAlert(
+                                        title: "Authentication Failed",
+                                        message: error,
+                                        isUpdate: false
+                                    )
                                 }
-                                alertMessage = error
-                                showAlert = true
                             }
                         }
                     }) {
@@ -332,34 +393,42 @@ public struct LoginView: View {
                 }
             }
             if authService.maintenanceDetected {
-                alertTitle = "Service Under Maintenance"
-                alertMessage = authService.maintenanceMessage
-                showAlert = true
+                activeAlert = ActiveAlert(
+                    title: "Service Under Maintenance",
+                    message: authService.maintenanceMessage.isEmpty ? "Panel is Under Maintainance." : authService.maintenanceMessage,
+                    isUpdate: false
+                )
             } else if authService.updateDetected {
-                alertTitle = authService.updateTitle
-                alertMessage = authService.updateMessage
-                showAlert = true
+                activeAlert = ActiveAlert(
+                    title: authService.updateTitle,
+                    message: authService.updateMessage,
+                    isUpdate: true
+                )
             }
         }
         .onReceive(authService.$maintenanceDetected) { isMaintenance in
             if isMaintenance {
-                alertTitle = "Service Under Maintenance"
-                alertMessage = authService.maintenanceMessage
-                showAlert = true
+                activeAlert = ActiveAlert(
+                    title: "Service Under Maintenance",
+                    message: authService.maintenanceMessage.isEmpty ? "Panel is Under Maintainance." : authService.maintenanceMessage,
+                    isUpdate: false
+                )
             }
         }
         .onReceive(authService.$updateDetected) { detected in
             if detected && !authService.maintenanceDetected {
-                alertTitle = authService.updateTitle
-                alertMessage = authService.updateMessage
-                showAlert = true
+                activeAlert = ActiveAlert(
+                    title: authService.updateTitle,
+                    message: authService.updateMessage,
+                    isUpdate: true
+                )
             }
         }
-        .alert(isPresented: $showAlert) {
-            if alertTitle.contains("Update") || alertTitle.contains("update") {
+        .alert(item: $activeAlert) { item in
+            if item.isUpdate {
                 return Alert(
-                    title: Text(alertTitle),
-                    message: Text(alertMessage),
+                    title: Text(item.title),
+                    message: Text(item.message),
                     dismissButton: .default(Text("OK")) {
                         let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchen0xf/Swift-ios/releases" : authService.updateDownloadURL
                         if let url = URL(string: target) {
@@ -369,8 +438,8 @@ public struct LoginView: View {
                 )
             } else {
                 return Alert(
-                    title: Text(alertTitle),
-                    message: Text(alertMessage),
+                    title: Text(item.title),
+                    message: Text(item.message),
                     dismissButton: .default(Text("Understood"))
                 )
             }
