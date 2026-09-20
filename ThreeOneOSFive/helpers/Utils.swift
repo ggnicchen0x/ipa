@@ -130,8 +130,8 @@ enum AppPaths {
 
 enum AppUpdateChecker {
     static let dismissedVersionKey = "update.dismissedVersion"
-    static let apiURL = URL(string: "https://api.github.com/repos/YangJiiii/3105/releases/latest")!
-    static let fallbackURL = URL(string: "https://github.com/YangJiiii/3105/releases/latest")!
+    static let apiURL = URL(string: "https://api.github.com/repos/nicchen0xf/Swift-ios/releases/latest") ?? URL(fileURLWithPath: "/")
+    static let fallbackURL = URL(string: "https://github.com/nicchen0xf/Swift-ios/releases/latest") ?? URL(fileURLWithPath: "/")
 
     struct Offer: Identifiable {
         let id = UUID()
