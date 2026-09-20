@@ -359,24 +359,28 @@ public struct LoginView: View {
                             .foregroundColor(.white.opacity(0.4))
                         
                         HStack(spacing: 16) {
-                            Link(destination: URL(string: "https://discord.gg/KPJzd42rme")!) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                                    Text("Discord")
+                            if let discordURL = URL(string: "https://discord.gg/KPJzd42rme") {
+                                Link(destination: discordURL) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                                        Text("Discord")
+                                    }
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(AppTheme.accent)
                                 }
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(AppTheme.accent)
                             }
                             
                             Text("•").foregroundColor(.white.opacity(0.3))
                             
-                            Link(destination: URL(string: "https://guns.lol/bytenichen7")!) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "person.crop.circle.fill")
-                                    Text("Developer")
+                            if let devURL = URL(string: "https://guns.lol/bytenichen7") {
+                                Link(destination: devURL) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "person.crop.circle.fill")
+                                        Text("Developer")
+                                    }
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(AppTheme.accent)
                                 }
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(AppTheme.accent)
                             }
                         }
                     }

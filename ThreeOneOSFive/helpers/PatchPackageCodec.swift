@@ -95,9 +95,10 @@ enum PatchPackageCodec {
             else {
                 throw PatchPackageError.invalidProject
             }
-            salt = try randomData(count: 16)
+            let generatedSalt = try randomData(count: 16)
+            salt = generatedSalt
             iterations = kdfIterations
-            let wrappingKey = try deriveKey(password: password, salt: salt!, iterations: kdfIterations)
+            let wrappingKey = try deriveKey(password: password, salt: generatedSalt, iterations: kdfIterations)
             wrappedKey = try seal(
                 contentKey,
                 key: wrappingKey,

@@ -337,9 +337,17 @@ struct ExternalPatchHubView: View {
             }
 
             let fileManager = FileManager.default
-            let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
-            let configJSON = "{\"testCodePatch\":true,\"resetGuest\":true}\n".data(using: .utf8)!
+            guard let configJSON = "{\"testCodePatch\":true,\"resetGuest\":true}\n".data(using: .utf8) else {
+                await MainActor.run {
+                    isProcessing = false
+                    alertTitle = "Encoding Error"
+                    alertMessage = "Failed to encode guest reset configuration payload."
+                    showingAlert = true
+                }
+                return
+            }
 
+            let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
             let targetDirectories = [
                 containerURL.appendingPathComponent("Documents", isDirectory: true),
                 containerURL.appendingPathComponent("Library/Application Support", isDirectory: true),

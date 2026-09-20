@@ -537,6 +537,8 @@ public final class AuthService: ObservableObject {
         deleteKeychain(key: tokenKey)
         deleteKeychain(key: savedLicenseKey)
         deleteKeychain(key: savedExpirationKey)
+        UserDefaults.standard.removeObject(forKey: "saved_license_key")
+        UserDefaults.standard.synchronize()
         self.isAuthenticated = false
         self.activeLicense = ""
         self.expirationText = ""

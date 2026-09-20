@@ -98,13 +98,17 @@ struct AppSearchField: View {
 struct AppLogo: View {
     var size: CGFloat = 44
 
+    private static let cachedIcon: UIImage? = {
+        UIImage(named: "AppLogo")
+            ?? UIImage(named: "AppIcon60x60")
+            ?? UIImage(named: "AppIcon")
+            ?? Bundle.main.path(forResource: "AppLogo", ofType: "png").flatMap(UIImage.init(contentsOfFile:))
+            ?? Bundle.main.path(forResource: "AppIcon60x60@2x", ofType: "png").flatMap(UIImage.init(contentsOfFile:))
+    }()
+
     var body: some View {
         Group {
-            if let icon = UIImage(named: "AppLogo")
-                ?? UIImage(named: "AppIcon60x60")
-                ?? UIImage(named: "AppIcon")
-                ?? Bundle.main.path(forResource: "AppLogo", ofType: "png").flatMap(UIImage.init(contentsOfFile:))
-                ?? Bundle.main.path(forResource: "AppIcon60x60@2x", ofType: "png").flatMap(UIImage.init(contentsOfFile:)) {
+            if let icon = Self.cachedIcon {
                 Image(uiImage: icon)
                     .resizable()
                     .scaledToFill()
