@@ -45,17 +45,17 @@ jobs:
           cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon*.png Payload/ByteExternal.app/ 2>/dev/null || true
           
           # Create iTunesArtwork for sideloaders from highest resolution AppIcon
-          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png iTunesArtwork@2x 2>/dev/null || true
-          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png iTunesArtwork 2>/dev/null || true
+          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png iTunesArtwork@2x 2>/dev/null || true
+          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon512.png iTunesArtwork 2>/dev/null || true
           
           ls -la Payload/ByteExternal.app/
           
-          zip -r9 ByteExternal_V1.1.1.ipa Payload/ iTunesArtwork iTunesArtwork@2x
-          cp ByteExternal_V1.1.1.ipa ByteExternal.ipa
+          zip -r9 ByteExternal_V1.1.2.ipa Payload/ iTunesArtwork iTunesArtwork@2x
+          cp ByteExternal_V1.1.2.ipa ByteExternal.ipa
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ByteExternal_V1.1.1
-          path: ByteExternal_V1.1.1.ipa
+          name: ByteExternal_V1.1.2
+          path: ByteExternal_V1.1.2.ipa
           retention-days: 14
