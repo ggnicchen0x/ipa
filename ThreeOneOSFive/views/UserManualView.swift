@@ -65,6 +65,17 @@ struct UserManualView: View {
                     Label("Magic Bullet", systemImage: "flame.fill")
                         .foregroundStyle(.purple)
                 }
+
+                // 5. Visuals
+                Section {
+                    ManualStepRow(number: 1, text: "Fully open the game and reach the lobby.")
+                    ManualStepRow(number: 2, text: "While in the lobby, toggle Visuals ON.")
+                    ManualStepRow(number: 3, text: "Enter a match to activate enemy hologram locations.")
+                    ManualStepRow(number: 4, text: "After the match finishes, toggle Visuals OFF.")
+                } header: {
+                    Label("Visuals", systemImage: "eye.fill")
+                        .foregroundStyle(.cyan)
+                }
             }
             .navigationTitle("New")
         }
