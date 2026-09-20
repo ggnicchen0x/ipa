@@ -50,6 +50,7 @@ struct ContentView: View {
                 LoginView()
             }
         }
+        .preferredColorScheme(.dark)
     }
 
     private var mainLayout: some View {

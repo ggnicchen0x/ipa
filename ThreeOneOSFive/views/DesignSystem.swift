@@ -1,21 +1,11 @@
 import SwiftUI
 
 enum AppTheme {
-    static let accent = Color(
-        uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.68, green: 0.45, blue: 0.98, alpha: 1.00) // #ad73fa (medium-light vibrant purple)
-                : UIColor(red: 0.55, green: 0.28, blue: 0.92, alpha: 1.00) // #8c47eb
-        }
-    )
-    static let purple = Color(
-        uiColor: UIColor(red: 0.68, green: 0.45, blue: 0.98, alpha: 1.00)
-    )
-    static let purpleDark = Color(
-        uiColor: UIColor(red: 0.45, green: 0.18, blue: 0.82, alpha: 1.00)
-    )
-    static let pageBackground = Color(uiColor: .systemBackground)
-    static let consoleBackground = Color(uiColor: .secondarySystemBackground)
+    static let accent = Color(red: 0.68, green: 0.45, blue: 0.98) // #ad73fa (medium-light vibrant purple)
+    static let purple = Color(red: 0.68, green: 0.45, blue: 0.98)
+    static let purpleDark = Color(red: 0.45, green: 0.18, blue: 0.82)
+    static let pageBackground = Color(uiColor: UIColor { _ in UIColor.black })
+    static let consoleBackground = Color(uiColor: UIColor { _ in UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.00) })
     static let pageInset: CGFloat = 16
     static let rowIconSize: CGFloat = 17
     static let rowIconFrame: CGFloat = 28

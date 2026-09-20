@@ -17,6 +17,12 @@ struct ThreeOneOSFiveApp: App {
     init() {
         setupLogCapture()
         log("app: 3105 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
+        
+        // Lock entire app UI into Dark Theme permanently
+        UIView.appearance().overrideUserInterfaceStyle = .dark
+        UIWindow.appearance().overrideUserInterfaceStyle = .dark
+        UINavigationBar.appearance().overrideUserInterfaceStyle = .dark
+        UITabBar.appearance().overrideUserInterfaceStyle = .dark
     }
 
     private var language: AppLanguage {
@@ -55,10 +61,12 @@ struct ThreeOneOSFiveApp: App {
                     .zIndex(1)
                 }
             }
+            .preferredColorScheme(.dark)
             .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding)
             .sheet(isPresented: $showAttribution) {
                 DisplayAttributionSheet()
             }
+            .preferredColorScheme(.dark)
             .onAppear {
                 if !showOnboarding {
                     appState.detectSupport()

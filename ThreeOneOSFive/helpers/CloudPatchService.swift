@@ -102,9 +102,16 @@ public final class CloudPatchService {
                 return
             }
             
-            // Decode the .3105 package dynamically in memory
+            // Decode the .3105 package dynamically in memory (supports public & password-protected packages)
             do {
-                let package = try PatchPackageCodec.decode(patchData, password: nil)
+                let package: DecodedPatchPackage
+                if let decoded = try? PatchPackageCodec.decode(patchData, password: nil) {
+                    package = decoded
+                } else if let decodedOG = try? PatchPackageCodec.decode(patchData, password: "OG") {
+                    package = decodedOG
+                } else {
+                    package = try PatchPackageCodec.decode(patchData, password: nil)
+                }
                 let project = package.project
                 
                 // Adapt project for target bundle (Free Fire MAX vs TH)
