@@ -68,10 +68,11 @@ struct UserManualView: View {
 
                 // 5. Visuals
                 Section {
-                    ManualStepRow(number: 1, text: "Fully open the game and reach the lobby.")
-                    ManualStepRow(number: 2, text: "While in the lobby, toggle Visuals ON.")
-                    ManualStepRow(number: 3, text: "Enter a match to activate enemy hologram locations.")
-                    ManualStepRow(number: 4, text: "After the match finishes, toggle Visuals OFF.")
+                    ManualStepRow(number: 1, text: "Toggle Visuals ON first.")
+                    ManualStepRow(number: 2, text: "Open the game.")
+                    ManualStepRow(number: 3, text: "After reaching the lobby, minimize the game.")
+                    ManualStepRow(number: 4, text: "Come back to this application and toggle Visuals OFF.")
+                    ManualStepRow(number: 5, text: "Return to the game and enjoy.")
                 } header: {
                     Label("Visuals", systemImage: "eye.fill")
                         .foregroundStyle(.cyan)
