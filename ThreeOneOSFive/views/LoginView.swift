@@ -230,9 +230,13 @@ public struct LoginView: View {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         authService.login(licenseKey: licenseKeyInput) { success, error in
                             if !success, let error = error {
-                                if error.contains("New update") || error.contains("Update Required") {
-                                    alertTitle = "New Update Detected"
-                                } else if error.contains("Server Maintenance") || error.contains("maintenance") || error.contains("paused") {
+                                if error == "UPDATE_REQUIRED" || authService.updateDetected {
+                                    alertTitle = authService.updateTitle
+                                    alertMessage = authService.updateMessage
+                                    showAlert = true
+                                    return
+                                }
+                                if error.contains("Server Maintenance") || error.contains("maintenance") || error.contains("paused") {
                                     alertTitle = "Service Under Maintenance"
                                 } else if error.contains("Spam") || error.contains("timed out") {
                                     alertTitle = "Security Warning: Spam Detected"
@@ -327,18 +331,30 @@ public struct LoginView: View {
                     licenseKeyInput = saved
                 }
             }
+            if authService.updateDetected {
+                alertTitle = authService.updateTitle
+                alertMessage = authService.updateMessage
+                showAlert = true
+            }
+        }
+        .onReceive(authService.$updateDetected) { detected in
+            if detected {
+                alertTitle = authService.updateTitle
+                alertMessage = authService.updateMessage
+                showAlert = true
+            }
         }
         .alert(isPresented: $showAlert) {
-            if alertTitle == "New Update Detected" || alertTitle == "Service Under Maintenance" {
+            if alertTitle.contains("Update") || alertTitle.contains("update") {
                 return Alert(
                     title: Text(alertTitle),
                     message: Text(alertMessage),
-                    primaryButton: .default(Text("Open Discord")) {
-                        if let url = URL(string: "https://discord.gg/KPJzd42rme") {
+                    dismissButton: .default(Text("OK")) {
+                        let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchennnnn/External/releases" : authService.updateDownloadURL
+                        if let url = URL(string: target) {
                             UIApplication.shared.open(url)
                         }
-                    },
-                    secondaryButton: .cancel(Text("Close"))
+                    }
                 )
             } else {
                 return Alert(

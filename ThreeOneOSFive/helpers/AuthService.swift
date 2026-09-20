@@ -94,12 +94,19 @@ public final class AuthService: ObservableObject {
     @Published public var isLockedOut: Bool = false
     @Published public var lockoutSecondsRemaining: Int = 0
     
+    // Online Update State (Driven dynamically from Web Admin)
+    @Published public var updateDetected: Bool = false
+    @Published public var updateTitle: String = "New Update Available"
+    @Published public var updateMessage: String = ""
+    @Published public var updateDownloadURL: String = "https://github.com/nicchennnnn/External/releases"
+    
     private var heartbeatTimer: Timer?
     private var lockoutTimer: Timer?
     private var localAttemptTimestamps: [Date] = []
     
     private init() {
         checkSavedLockout()
+        checkForUpdates()
         
         // Check for saved session in secure Keychain on launch
         if let token = loadKeychain(key: tokenKey), !token.isEmpty {
@@ -281,6 +288,32 @@ public final class AuthService: ObservableObject {
                 return
             }
             
+            // Handle HTTP 426 Update Required
+            if httpResponse.statusCode == 426 {
+                var notes = ""
+                var latestVer = ""
+                var dUrl = "https://github.com/nicchennnnn/External/releases"
+                if let json = parsedJSON {
+                    latestVer = json["latest_version"] as? String ?? ""
+                    notes = json["release_notes"] as? String ?? (json["detail"] as? String ?? "")
+                    dUrl = json["download_url"] as? String ?? "https://github.com/nicchennnnn/External/releases"
+                }
+                if notes.isEmpty {
+                    notes = "A new update is available. Please download the latest version."
+                }
+                let cleanNotes = notes
+                let cleanVer = latestVer
+                let cleanDUrl = dUrl
+                DispatchQueue.main.async {
+                    self.updateTitle = "New Update Available \(cleanVer.isEmpty ? "" : cleanVer)"
+                    self.updateMessage = cleanNotes
+                    self.updateDownloadURL = cleanDUrl
+                    self.updateDetected = true
+                    completion(false, "UPDATE_REQUIRED")
+                }
+                return
+            }
+            
             // Extract detailed error message from JSON or Raw Response
             var errorMessage: String = ""
             if let json = parsedJSON {
@@ -302,8 +335,6 @@ public final class AuthService: ObservableObject {
                     errorMessage = "License key is locked to another device. Key sharing is prohibited."
                 } else if httpResponse.statusCode == 403 {
                     errorMessage = "License key has been banned or revoked."
-                } else if httpResponse.statusCode == 426 {
-                    errorMessage = "New update detected! Please download the latest update from Discord: https://discord.gg/KPJzd42rme"
                 } else if httpResponse.statusCode == 503 {
                     errorMessage = "Server maintenance is currently in progress. Please check Discord announcements."
                 } else {
@@ -318,6 +349,64 @@ public final class AuthService: ObservableObject {
                 completion(false, errorMessage)
             }
         }.resume()
+    }
+    
+    // MARK: - Online Version & Update Check
+    public func checkForUpdates(completion: ((Bool) -> Void)? = nil) {
+        guard let url = URL(string: "\(serverBaseURL)/api/v1/auth/version-check") else {
+            completion?(false)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 5.0
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self, let data = data else {
+                completion?(false)
+                return
+            }
+            if let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                let latestVer = json["latest_version"] as? String ?? ""
+                let forceUpdate = json["force_update"] as? Bool ?? false
+                let releaseNotes = json["release_notes"] as? String ?? ""
+                let downloadUrl = json["download_url"] as? String ?? "https://github.com/nicchennnnn/External/releases"
+                
+                let isOlder = self.isClientVersionOlder(clientVer: self.appVersion, targetVer: latestVer)
+                let isMismatch = (self.appVersion != latestVer)
+                
+                if (forceUpdate && isMismatch) || isOlder {
+                    DispatchQueue.main.async {
+                        self.updateTitle = "New Update Available \(latestVer.isEmpty ? "" : latestVer)"
+                        self.updateMessage = releaseNotes.isEmpty ? "A new update is available. Please download the latest version." : releaseNotes
+                        self.updateDownloadURL = downloadUrl.isEmpty ? "https://github.com/nicchennnnn/External/releases" : downloadUrl
+                        self.updateDetected = true
+                        completion?(true)
+                    }
+                    return
+                }
+            }
+            DispatchQueue.main.async {
+                completion?(false)
+            }
+        }.resume()
+    }
+    
+    private func isClientVersionOlder(clientVer: String, targetVer: String) -> Bool {
+        func parseVersion(_ v: String) -> [Int] {
+            return v.replacingOccurrences(of: "v", with: "").split(separator: ".").compactMap { Int($0) }
+        }
+        let cParts = parseVersion(clientVer)
+        let tParts = parseVersion(targetVer)
+        let maxLen = max(cParts.count, tParts.count)
+        for i in 0..<maxLen {
+            let c = i < cParts.count ? cParts[i] : 0
+            let t = i < tParts.count ? tParts[i] : 0
+            if c < t { return true }
+            if c > t { return false }
+        }
+        return false
     }
     
     // MARK: - Silent Session Validation (App Launch)
@@ -347,6 +436,28 @@ public final class AuthService: ObservableObject {
         
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 426 {
+                var notes = ""
+                var latestVer = ""
+                var dUrl = "https://github.com/nicchennnnn/External/releases"
+                if let data = data, let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                    latestVer = json["latest_version"] as? String ?? ""
+                    notes = json["release_notes"] as? String ?? (json["detail"] as? String ?? "")
+                    dUrl = json["download_url"] as? String ?? "https://github.com/nicchennnnn/External/releases"
+                }
+                let cleanNotes = notes.isEmpty ? "A new update is available. Please download the latest version." : notes
+                let cleanVer = latestVer
+                let cleanDUrl = dUrl
+                DispatchQueue.main.async {
+                    self.updateTitle = "New Update Available \(cleanVer.isEmpty ? "" : cleanVer)"
+                    self.updateMessage = cleanNotes
+                    self.updateDownloadURL = cleanDUrl
+                    self.updateDetected = true
+                    self.logout()
+                }
+                return
+            }
+            
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 DispatchQueue.main.async {
                     self.logout()

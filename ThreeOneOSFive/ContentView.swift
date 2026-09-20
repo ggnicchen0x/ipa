@@ -51,6 +51,18 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .alert(isPresented: $authService.updateDetected) {
+            Alert(
+                title: Text(authService.updateTitle),
+                message: Text(authService.updateMessage),
+                dismissButton: .default(Text("OK")) {
+                    let target = authService.updateDownloadURL.isEmpty ? "https://github.com/nicchennnnn/External/releases" : authService.updateDownloadURL
+                    if let url = URL(string: target) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            )
+        }
     }
 
     private var mainLayout: some View {
