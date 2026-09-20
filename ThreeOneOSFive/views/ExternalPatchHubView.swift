@@ -21,7 +21,7 @@ struct ExternalPatchHubView: View {
     @AppStorage("mod.fps_144") private var fps144Enabled: Bool = false
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
     @AppStorage("mod.body_drag") private var bodyDragEnabled: Bool = false
-    @AppStorage("mod.clean_cache") private var cleanCacheEnabled: Bool = false
+    @AppStorage("mod.visuals") private var visualsEnabled: Bool = false
 
     @State private var statusMessage: String = "Ready"
     @State private var isProcessing: Bool = false
@@ -137,21 +137,21 @@ struct ExternalPatchHubView: View {
                         handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
                     }
 
-                    Toggle(isOn: $cleanCacheEnabled) {
+                    Toggle(isOn: $visualsEnabled) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Clean Cache Asset")
+                                Text("Visuals")
                                     .fontWeight(.medium)
-                                Text("Cleans and refreshes game cache")
+                                Text("Hologram for Location Exposed")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         } icon: {
-                            AppRowIcon(systemName: "arrow.triangle.2.circlepath", tint: AppTheme.accent)
+                            AppRowIcon(systemName: "eye.fill", tint: .cyan)
                         }
                     }
-                    .onChange(of: cleanCacheEnabled) { isEnabled in
-                        handleToggleChange(featureName: "clean", isEnabled: isEnabled)
+                    .onChange(of: visualsEnabled) { isEnabled in
+                        handleToggleChange(featureName: "hologram", isEnabled: isEnabled)
                     }
                 } header: {
                     Text("External Toggles")
@@ -240,6 +240,7 @@ struct ExternalPatchHubView: View {
         case "144": featureTitle = "144 FPS Unlock"
         case "magic": featureTitle = "Magic Bullet"
         case "aimbody": featureTitle = "Aim Body"
+        case "hologram", "visuals": featureTitle = "Visuals"
         default: featureTitle = featureName.capitalized
         }
         
@@ -268,6 +269,7 @@ struct ExternalPatchHubView: View {
                     case "144": self.fps144Enabled = false
                     case "magic": self.magicBulletEnabled = false
                     case "aimbody": self.bodyDragEnabled = false
+                    case "hologram", "visuals": self.visualsEnabled = false
                     default: break
                     }
                 }
@@ -310,7 +312,7 @@ struct ExternalPatchHubView: View {
                 fps144Enabled = false
                 magicBulletEnabled = false
                 bodyDragEnabled = false
-                cleanCacheEnabled = false
+                visualsEnabled = false
                 isProcessing = false
                 alertTitle = "Restore Complete"
                 alertMessage = "Restored original game files (\(restoredCount) files reverted)."
