@@ -168,6 +168,16 @@ public final class AuthService: ObservableObject {
         return deviceModelName()
     }
     
+    public var savedLicenseKeyText: String {
+        if let key = loadKeychain(key: savedLicenseKey), !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return key.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let userDefKey = UserDefaults.standard.string(forKey: "saved_license_key"), !userDefKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return userDefKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return activeLicense.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
     // MARK: - Login Action
     public func login(licenseKey: String, completion: @escaping (Bool, String?) -> Void) {
         if isLockedOut {
@@ -187,7 +197,7 @@ public final class AuthService: ObservableObject {
             return
         }
         
-        let cleanKey = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanKey = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !cleanKey.isEmpty else {
             completion(false, "Please enter a valid license key.")
             return
@@ -223,7 +233,7 @@ public final class AuthService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
-        request.timeoutInterval = 10.0
+        request.timeoutInterval = 12.0
         
         DispatchQueue.main.async { self.isLoading = true }
         
@@ -238,21 +248,21 @@ public final class AuthService: ObservableObject {
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse, let data = data else {
+            guard let httpResponse = response as? HTTPURLResponse else {
                 DispatchQueue.main.async {
-                    completion(false, "Invalid server response.")
+                    completion(false, "Invalid response from security gateway.")
                 }
                 return
             }
             
-            guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-                DispatchQueue.main.async {
-                    completion(false, "Failed to parse server response.")
-                }
-                return
+            let responseData = data ?? Data()
+            var parsedJSON: [String: Any]? = nil
+            if let obj = (try? JSONSerialization.jsonObject(with: responseData)) as? [String: Any] {
+                parsedJSON = obj
             }
             
-            if httpResponse.statusCode == 200, let success = json["success"] as? Bool, success {
+            // Success 200 OK
+            if httpResponse.statusCode == 200, let json = parsedJSON, let success = json["success"] as? Bool, success {
                 let token = json["token"] as? String ?? ""
                 let expiresAt = json["expires_at"] as? String ?? "LIFETIME"
                 
@@ -261,36 +271,51 @@ public final class AuthService: ObservableObject {
                     self.saveKeychain(key: self.tokenKey, value: token)
                     self.saveKeychain(key: self.savedLicenseKey, value: cleanKey)
                     self.saveKeychain(key: self.savedExpirationKey, value: expiresAt)
+                    UserDefaults.standard.set(cleanKey, forKey: "saved_license_key")
                     self.activeLicense = cleanKey
                     self.expirationText = expiresAt
                     self.isAuthenticated = true
                     self.startHeartbeatTimer()
                     completion(true, nil)
                 }
-            } else if httpResponse.statusCode == 426 {
-                // Update Required
-                let detail = json["detail"] as? String ?? "New update detected! Please download the latest update from Discord: https://discord.gg/KPJzd42rme"
-                DispatchQueue.main.async {
-                    completion(false, detail)
+                return
+            }
+            
+            // Extract detailed error message from JSON or Raw Response
+            var errorMessage: String = ""
+            if let json = parsedJSON {
+                if let detail = json["detail"] as? String {
+                    errorMessage = detail
+                } else if let msg = json["message"] as? String {
+                    errorMessage = msg
+                } else if let err = json["error"] as? String {
+                    errorMessage = err
                 }
-            } else if httpResponse.statusCode == 503 {
-                // Server Maintenance / Paused
-                let detail = json["detail"] as? String ?? "Server maintenance is currently in progress. Please check Discord announcements for status updates: https://discord.gg/KPJzd42rme"
-                DispatchQueue.main.async {
-                    completion(false, detail)
+            }
+            
+            if errorMessage.isEmpty {
+                if let rawString = String(data: responseData, encoding: .utf8), !rawString.isEmpty && rawString.count < 250 {
+                    errorMessage = rawString
+                } else if httpResponse.statusCode == 401 {
+                    errorMessage = "Invalid license key provided."
+                } else if httpResponse.statusCode == 409 {
+                    errorMessage = "License key is locked to another device. Key sharing is prohibited."
+                } else if httpResponse.statusCode == 403 {
+                    errorMessage = "License key has been banned or revoked."
+                } else if httpResponse.statusCode == 426 {
+                    errorMessage = "New update detected! Please download the latest update from Discord: https://discord.gg/KPJzd42rme"
+                } else if httpResponse.statusCode == 503 {
+                    errorMessage = "Server maintenance is currently in progress. Please check Discord announcements."
+                } else {
+                    errorMessage = "Authentication failed (Server HTTP \(httpResponse.statusCode))."
                 }
-            } else if httpResponse.statusCode == 429 {
-                // Rate limit / Spam 10-min lockout triggered by server
-                let detail = json["detail"] as? String ?? "Spam detected: Do not repeatedly tap login. You have been timed out for 10 minutes."
-                self.startLockout(duration: 600)
-                DispatchQueue.main.async {
-                    completion(false, detail)
+            }
+            
+            DispatchQueue.main.async {
+                if httpResponse.statusCode == 429 {
+                    self.startLockout(duration: 600)
                 }
-            } else {
-                let detail = json["detail"] as? String ?? "Authentication failed."
-                DispatchQueue.main.async {
-                    completion(false, detail)
-                }
+                completion(false, errorMessage)
             }
         }.resume()
     }

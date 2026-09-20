@@ -315,10 +315,17 @@ public struct LoginView: View {
                             }
                         }
                     }
-                    .padding(.top, 10)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
+            }
+        }
+        .onAppear {
+            if licenseKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let saved = authService.savedLicenseKeyText
+                if !saved.isEmpty {
+                    licenseKeyInput = saved
+                }
             }
         }
         .alert(isPresented: $showAlert) {
