@@ -39,20 +39,12 @@ struct ExternalPatchHubView: View {
             List {
                 // Section 1: Game Configuration
                 Section {
-                    Picker("Target Version", selection: $targetBundle) {
+                    Picker("Select Game", selection: $targetBundle) {
                         ForEach(supportedBundles, id: \.1) { item in
                             Text(item.0).tag(item.1)
                         }
                     }
                     .pickerStyle(.menu)
-
-                    HStack {
-                        Label("Target Bundle ID", systemImage: "app.badge.checkmark")
-                        Spacer()
-                        Text(targetBundle)
-                            .font(.system(.footnote, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
 
                     HStack {
                         Label("Kernel Status", systemImage: "bolt.shield")

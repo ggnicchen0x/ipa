@@ -14,36 +14,9 @@ struct SkinsView: View {
     @State private var alertMessage: String = ""
     @State private var processingSkinID: String? = nil
 
-    private let supportedBundles = [
-        ("Free Fire MAX", "com.dts.freefiremax"),
-        ("Free Fire TH", "com.dts.freefireth")
-    ]
-
     var body: some View {
         NavigationStack {
             List {
-                // Game Version Selector
-                Section {
-                    Picker("Target Version", selection: $targetBundle) {
-                        ForEach(supportedBundles, id: \.1) { item in
-                            Text(item.0).tag(item.1)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    HStack {
-                        Label("Target Game", systemImage: "gamecontroller.fill")
-                        Spacer()
-                        Text(targetBundle)
-                            .font(.footnote.monospaced())
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Game Configuration")
-                } footer: {
-                    Text("Select the game version where you want to apply skin mods.")
-                }
-
                 // Skins Catalog Section
                 Section {
                     ForEach(skinService.skins) { skin in
