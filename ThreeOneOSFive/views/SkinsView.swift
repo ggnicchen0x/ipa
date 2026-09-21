@@ -23,7 +23,8 @@ struct SkinsView: View {
                         SkinRowView(
                             skin: skin,
                             isApplied: skinService.isApplied(skinID: skin.id),
-                            isProcessing: processingSkinID == skin.id || skinService.isProcessing,
+                            isProcessing: processingSkinID == skin.id,
+                            isAnyProcessing: processingSkinID != nil || skinService.isProcessing,
                             onAction: {
                                 handleSkinAction(skin: skin)
                             }
@@ -70,6 +71,7 @@ private struct SkinRowView: View {
     let skin: SkinItem
     let isApplied: Bool
     let isProcessing: Bool
+    let isAnyProcessing: Bool
     let onAction: () -> Void
 
     var body: some View {
@@ -122,7 +124,7 @@ private struct SkinRowView: View {
                                 .font(.system(size: 11, weight: .semibold))
                         }
                         
-                        Text(isApplied ? "Remove" : "Apply")
+                        Text(isProcessing ? (isApplied ? "Removing..." : "Applying...") : (isApplied ? "Remove" : "Apply"))
                             .font(.system(size: 13, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
@@ -143,7 +145,7 @@ private struct SkinRowView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .disabled(isProcessing)
+                .disabled(isAnyProcessing)
             }
         }
         .padding(.vertical, 6)
