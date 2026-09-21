@@ -110,6 +110,10 @@ struct UserAccountView: View {
                             Spacer()
                         }
                     }
+                } header: {
+                    Text("License & Authentication")
+                }
+
                 Section {
                     HStack {
                         Label("Contact Support", systemImage: "bubble.left.and.bubble.right.fill")
