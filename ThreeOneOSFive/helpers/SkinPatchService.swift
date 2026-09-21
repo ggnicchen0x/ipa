@@ -97,19 +97,86 @@ public final class SkinPatchService: ObservableObject {
     ) {
         isProcessing = true
         
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        let auth = AuthService.shared
+        guard auth.isAuthenticated else {
+            isProcessing = false
+            completion(false, "Authentication required. Please log in first.")
+            return
+        }
+        
+        let token = auth.currentSessionToken
+        guard !token.isEmpty else {
+            isProcessing = false
+            completion(false, "Active session token missing. Please log in again.")
+            return
+        }
+        
+        let hwid = auth.hardwareID
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let normalizedKey = skin.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        // Anti-replay HMAC signature: feature_key:hwid:timestamp
+        let sigPayload = "\(normalizedKey):\(hwid):\(timestamp)"
+        let signature = auth.hmacSHA256(payload: sigPayload, key: auth.hmacSecretValue)
+        
+        guard let url = URL(string: "\(auth.serverBaseURL)/api/v1/patches/fetch") else {
+            isProcessing = false
+            completion(false, "Invalid patch delivery endpoint configuration.")
+            return
+        }
+        
+        let requestBody: [String: Any] = [
+            "feature_name": normalizedKey,
+            "token": token,
+            "device_hash": hwid,
+            "timestamp": timestamp,
+            "signature": signature
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            isProcessing = false
+            completion(false, "Failed to serialize patch request.")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        request.timeoutInterval = 15.0
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
             
-            // 1. Locate the .3105 file in app bundle or skins folder
-            guard let patchData = self.loadPatchData(filename: skin.patchFileName) else {
+            // If backend request succeeds with 200 and binary data, use backend payload.
+            // Otherwise, fallback to local bundle if available.
+            var patchDataToApply: Data? = nil
+            
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200, let data = data, !data.isEmpty {
+                patchDataToApply = data
+            } else {
+                // Fallback to local bundle
+                patchDataToApply = self.loadPatchData(filename: skin.patchFileName)
+            }
+            
+            guard let patchData = patchDataToApply else {
+                let errorMsg: String
+                if let error = error {
+                    errorMsg = "Backend delivery failed: \(error.localizedDescription)"
+                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                    errorMsg = "Server rejected patch delivery (HTTP \(httpResponse.statusCode))."
+                } else {
+                    errorMsg = "Skin patch package '\(skin.patchFileName)' could not be retrieved."
+                }
+                
                 DispatchQueue.main.async {
                     self.isProcessing = false
-                    completion(false, "Skin patch package '\(skin.patchFileName)' could not be found.")
+                    completion(false, errorMsg)
                 }
                 return
             }
             
-            // 2. Decode the .3105 package
+            // Decode the .3105 package
             do {
                 let package: DecodedPatchPackage
                 if let decoded = try? PatchPackageCodec.decode(patchData, password: nil) {
@@ -157,7 +224,7 @@ public final class SkinPatchService: ObservableObject {
                     self.appliedSkinIDs.insert(skin.id)
                     self.saveAppliedState()
                     self.isProcessing = false
-                    completion(true, "Applied \(skin.name) successfully!")
+                    completion(true, "Applied \(skin.name) successfully from Cloud Backend!")
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -165,7 +232,7 @@ public final class SkinPatchService: ObservableObject {
                     completion(false, "Failed to apply skin: \(error.localizedDescription)")
                 }
             }
-        }
+        }.resume()
     }
     
     public func removeSkin(
