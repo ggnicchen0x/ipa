@@ -175,31 +175,31 @@ private struct SkinThumbnailView: View {
     }
 
     private func loadUIImage(named: String) -> UIImage? {
-        // Check standard asset catalog
         if let img = UIImage(named: named) {
             return img
         }
-        
-        // Check main bundle for named.jpg or named.png
-        for ext in ["jpg", "jpeg", "png"] {
-            if let path = Bundle.main.path(forResource: named, ofType: ext) {
-                if let img = UIImage(contentsOfFile: path) {
-                    return img
-                }
-            }
-            if let path = Bundle.main.path(forResource: named, ofType: ext, inDirectory: "skins") {
-                if let img = UIImage(contentsOfFile: path) {
-                    return img
-                }
-            }
-        }
-        
-        // Direct bundle URL path check
-        let skinsUrl = URL(fileURLWithPath: Bundle.main.bundlePath).appendingPathComponent("skins").appendingPathComponent("\(named).jpg")
-        if let img = UIImage(contentsOfFile: skinsUrl.path) {
+        let cleanName = named.replacingOccurrences(of: " ", with: "_")
+        if let img = UIImage(named: cleanName) {
             return img
         }
         
+        let candidates = [named, cleanName, named.replacingOccurrences(of: "_", with: " ")]
+        for name in candidates {
+            for ext in ["png", "jpg", "jpeg", "PNG", "JPG"] {
+                if let path = Bundle.main.path(forResource: name, ofType: ext) {
+                    if let img = UIImage(contentsOfFile: path) { return img }
+                }
+                if let path = Bundle.main.path(forResource: name, ofType: ext, inDirectory: "skins") {
+                    if let img = UIImage(contentsOfFile: path) { return img }
+                }
+                let skinsUrl = URL(fileURLWithPath: Bundle.main.bundlePath)
+                    .appendingPathComponent("skins")
+                    .appendingPathComponent("\(name).\(ext)")
+                if let img = UIImage(contentsOfFile: skinsUrl.path) {
+                    return img
+                }
+            }
+        }
         return nil
     }
 }
