@@ -143,8 +143,8 @@ struct ContentView: View {
             ExternalPatchHubView()
         case .new:
             UserManualView()
-        case .devInfo:
-            DevInfoView()
+        case .skins:
+            SkinsView()
         case .account:
             UserAccountView()
         }
@@ -218,7 +218,7 @@ private extension AppSection {
         switch self {
         case .menu: return "Menu"
         case .new: return "New"
-        case .devInfo: return "Dev Info"
+        case .skins: return "Skins"
         case .account: return "Account"
         }
     }
@@ -227,7 +227,7 @@ private extension AppSection {
         switch self {
         case .menu: return "slider.horizontal.3"
         case .new: return "book.pages.fill"
-        case .devInfo: return "bubble.left.and.bubble.right.fill"
+        case .skins: return "tshirt.fill"
         case .account: return "person.crop.circle.fill"
         }
     }

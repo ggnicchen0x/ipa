@@ -3,7 +3,7 @@ import Foundation
 enum AppSection: Int, CaseIterable, Identifiable {
     case menu = 0
     case new = 1
-    case devInfo = 2
+    case skins = 2
     case account = 3
 
     var id: Int { rawValue }

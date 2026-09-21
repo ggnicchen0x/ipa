@@ -110,8 +110,28 @@ struct UserAccountView: View {
                             Spacer()
                         }
                     }
+                Section {
+                    HStack {
+                        Label("Contact Support", systemImage: "bubble.left.and.bubble.right.fill")
+                        Spacer()
+                        if let discordURL = URL(string: "https://discord.gg/KPJzd42rme") {
+                            Link("Open", destination: discordURL)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                    }
+
+                    HStack {
+                        Label("Developer", systemImage: "person.crop.circle.fill")
+                        Spacer()
+                        if let devURL = URL(string: "https://guns.lol/bytenichen7") {
+                            Link("Click", destination: devURL)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                    }
                 } header: {
-                    Text("License & Authentication")
+                    Text("Support & Developer")
                 }
             }
             .navigationTitle("Account")
