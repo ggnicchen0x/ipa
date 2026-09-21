@@ -101,9 +101,9 @@ private struct SkinRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            // Left Side: Skin Thumbnail Image (Full fit, no cropping)
+            // Left Side: Skin Thumbnail Image (Square 1:1 full-bleed card)
             SkinThumbnailView(imageName: skin.imageName)
-                .frame(width: 76, height: 84)
+                .frame(width: 76, height: 76)
                 .background(Color.black.opacity(0.35))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
@@ -185,11 +185,11 @@ private struct SkinThumbnailView: View {
             if let uiImage = loadUIImage(named: imageName) {
                 Image(uiImage: uiImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .aspectRatio(contentMode: .fill)
             } else if let assetImage = UIImage(named: imageName) {
                 Image(uiImage: assetImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .aspectRatio(contentMode: .fill)
             } else {
                 ZStack {
                     Color.secondary.opacity(0.15)
