@@ -227,7 +227,7 @@ private extension AppSection {
         switch self {
         case .menu: return "slider.horizontal.3"
         case .new: return "book.pages.fill"
-        case .skins: return "sparkles"
+        case .skins: return "shippingbox.fill"
         case .account: return "person.crop.circle.fill"
         }
     }
