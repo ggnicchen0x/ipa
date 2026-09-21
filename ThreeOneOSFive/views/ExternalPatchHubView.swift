@@ -24,7 +24,10 @@ struct ExternalPatchHubView: View {
     @AppStorage("mod.visuals") private var visualsEnabled: Bool = false
 
     @State private var statusMessage: String = "Ready"
-    @State private var isProcessing: Bool = false
+    @State private var processingFeature: String? = nil
+    @State private var isResettingGuest: Bool = false
+    @State private var isRemovingResetConfig: Bool = false
+    @State private var isRestoringGame: Bool = false
     @State private var showingAlert: Bool = false
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
@@ -63,85 +66,125 @@ struct ExternalPatchHubView: View {
                 Section {
                     Toggle(isOn: $aimStableEnabled) {
                         Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Aim Drag")
-                                    .fontWeight(.medium)
-                                Text("Enhance your Aim Target")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Aim Drag")
+                                        .fontWeight(.medium)
+                                    Text("Enhance your Aim Target")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "avatar" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
                             }
                         } icon: {
                             AppRowIcon(systemName: "scope", tint: .red)
                         }
                     }
+                    .disabled(processingFeature != nil)
                     .onChange(of: aimStableEnabled) { isEnabled in
                         handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
                     }
 
                     Toggle(isOn: $fps144Enabled) {
                         Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("144 FPS Unlock")
-                                    .fontWeight(.medium)
-                                Text("Unlocks ultra-smooth 144Hz gameplay")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("144 FPS Unlock")
+                                        .fontWeight(.medium)
+                                    Text("Unlocks ultra-smooth 144Hz gameplay")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "144" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
                             }
                         } icon: {
                             AppRowIcon(systemName: "speedometer", tint: .green)
                         }
                     }
+                    .disabled(processingFeature != nil)
                     .onChange(of: fps144Enabled) { isEnabled in
                         handleToggleChange(featureName: "144", isEnabled: isEnabled)
                     }
 
                     Toggle(isOn: $magicBulletEnabled) {
                         Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Magic Bullet")
-                                    .fontWeight(.medium)
-                                Text("Connect Every Single Bullets")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Magic Bullet")
+                                        .fontWeight(.medium)
+                                    Text("Connect Every Single Bullets")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "magic" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
                             }
                         } icon: {
                             AppRowIcon(systemName: "flame.fill", tint: .purple)
                         }
                     }
+                    .disabled(processingFeature != nil)
                     .onChange(of: magicBulletEnabled) { isEnabled in
                         handleToggleChange(featureName: "magic", isEnabled: isEnabled)
                     }
 
                     Toggle(isOn: $bodyDragEnabled) {
                         Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Aim Body")
-                                    .fontWeight(.medium)
-                                Text("Only Red shots/high accuracy")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Aim Body")
+                                        .fontWeight(.medium)
+                                    Text("Only Red shots/high accuracy")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "aimbody" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
                             }
                         } icon: {
                             AppRowIcon(systemName: "bolt.fill", tint: .blue)
                         }
                     }
+                    .disabled(processingFeature != nil)
                     .onChange(of: bodyDragEnabled) { isEnabled in
                         handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
                     }
 
                     Toggle(isOn: $visualsEnabled) {
                         Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Visuals")
-                                    .fontWeight(.medium)
-                                Text("Hologram for Location Exposed")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Visuals")
+                                        .fontWeight(.medium)
+                                    Text("Hologram for Location Exposed")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "hologram" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
                             }
                         } icon: {
                             AppRowIcon(systemName: "eye.fill", tint: .cyan)
                         }
                     }
+                    .disabled(processingFeature != nil)
                     .onChange(of: visualsEnabled) { isEnabled in
                         handleToggleChange(featureName: "hologram", isEnabled: isEnabled)
                     }
@@ -164,12 +207,12 @@ struct ExternalPatchHubView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if isProcessing {
+                            if isResettingGuest {
                                 ProgressView()
                             }
                         }
                     }
-                    .disabled(isProcessing)
+                    .disabled(isResettingGuest || isRemovingResetConfig || isRestoringGame)
 
                     Button(role: .destructive) {
                         removeResetGuestConfig()
@@ -184,9 +227,12 @@ struct ExternalPatchHubView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
+                            if isRemovingResetConfig {
+                                ProgressView()
+                            }
                         }
                     }
-                    .disabled(isProcessing)
+                    .disabled(isResettingGuest || isRemovingResetConfig || isRestoringGame)
                 } header: {
                     Text("Guest Account Manager")
                 } footer: {
@@ -200,7 +246,7 @@ struct ExternalPatchHubView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            if isProcessing {
+                            if isRestoringGame {
                                 ProgressView()
                                     .padding(.trailing, 8)
                             }
@@ -209,7 +255,7 @@ struct ExternalPatchHubView: View {
                             Spacer()
                         }
                     }
-                    .disabled(isProcessing)
+                    .disabled(isRestoringGame || isResettingGuest || isRemovingResetConfig)
                 } header: {
                     Text("Execution & Safety")
                 } footer: {
@@ -236,53 +282,56 @@ struct ExternalPatchHubView: View {
         default: featureTitle = featureName.capitalized
         }
         
+        processingFeature = featureName
         if isEnabled {
-            isProcessing = true
             statusMessage = "Fetching '\(featureTitle)' from cloud..."
             
             CloudPatchService.shared.fetchAndApplyPatch(
                 featureKey: featureName,
                 targetBundle: targetBundle
             ) { success, message in
-                self.isProcessing = false
-                if success {
-                    self.statusMessage = "Applied '\(featureTitle)' successfully."
-                    self.log("hub: cloud-delivered \(featureTitle) to \(self.targetBundle)")
-                } else {
-                    self.statusMessage = "Cloud fetch failed: \(message)"
-                    self.alertTitle = "Cloud Delivery Error"
-                    self.alertMessage = message
-                    self.showingAlert = true
-                    self.log("hub: cloud-apply failed for \(featureTitle): \(message)")
-                    
-                    // Revert toggle state if cloud fetch failed
-                    switch featureName {
-                    case "avatar": self.aimStableEnabled = false
-                    case "144": self.fps144Enabled = false
-                    case "magic": self.magicBulletEnabled = false
-                    case "aimbody": self.bodyDragEnabled = false
-                    case "hologram", "visuals": self.visualsEnabled = false
-                    default: break
+                DispatchQueue.main.async {
+                    self.processingFeature = nil
+                    if success {
+                        self.statusMessage = "Applied '\(featureTitle)' successfully."
+                        self.log("hub: cloud-delivered \(featureTitle) to \(self.targetBundle)")
+                    } else {
+                        self.statusMessage = "Cloud fetch failed: \(message)"
+                        self.alertTitle = "Cloud Delivery Error"
+                        self.alertMessage = message
+                        self.showingAlert = true
+                        self.log("hub: cloud-apply failed for \(featureTitle): \(message)")
+                        
+                        // Revert toggle state if cloud fetch failed
+                        switch featureName {
+                        case "avatar": self.aimStableEnabled = false
+                        case "144": self.fps144Enabled = false
+                        case "magic": self.magicBulletEnabled = false
+                        case "aimbody": self.bodyDragEnabled = false
+                        case "hologram", "visuals": self.visualsEnabled = false
+                        default: break
+                        }
                     }
                 }
             }
         } else {
-            isProcessing = true
             statusMessage = "Reverting '\(featureTitle)'..."
             
             CloudPatchService.shared.revertPatch(
                 featureKey: featureName,
                 targetBundle: targetBundle
             ) { success, message in
-                self.isProcessing = false
-                self.statusMessage = message
-                self.log("hub: reverted \(featureTitle) for \(self.targetBundle)")
+                DispatchQueue.main.async {
+                    self.processingFeature = nil
+                    self.statusMessage = message
+                    self.log("hub: reverted \(featureTitle) for \(self.targetBundle)")
+                }
             }
         }
     }
 
     private func restoreAllDefaults() {
-        isProcessing = true
+        isRestoringGame = true
         statusMessage = "Restoring defaults..."
 
         Task {
@@ -305,7 +354,7 @@ struct ExternalPatchHubView: View {
                 magicBulletEnabled = false
                 bodyDragEnabled = false
                 visualsEnabled = false
-                isProcessing = false
+                isRestoringGame = false
                 alertTitle = "Restore Complete"
                 alertMessage = "Restored original game files (\(restoredCount) files reverted)."
                 showingAlert = true
@@ -314,13 +363,13 @@ struct ExternalPatchHubView: View {
     }
 
     private func resetGuestAccount() {
-        guard !isProcessing else { return }
-        isProcessing = true
+        guard !isResettingGuest else { return }
+        isResettingGuest = true
 
         Task {
             guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) else {
                 await MainActor.run {
-                    isProcessing = false
+                    isResettingGuest = false
                     alertTitle = "Game Not Found"
                     alertMessage = "Could not resolve container path for \(targetBundle). Make sure the game is installed."
                     showingAlert = true
@@ -331,7 +380,7 @@ struct ExternalPatchHubView: View {
             let fileManager = FileManager.default
             guard let configJSON = "{\"testCodePatch\":true,\"resetGuest\":true}\n".data(using: .utf8) else {
                 await MainActor.run {
-                    isProcessing = false
+                    isResettingGuest = false
                     alertTitle = "Encoding Error"
                     alertMessage = "Failed to encode guest reset configuration payload."
                     showingAlert = true
@@ -361,7 +410,7 @@ struct ExternalPatchHubView: View {
             }
 
             await MainActor.run {
-                isProcessing = false
+                isResettingGuest = false
                 if writtenCount > 0 {
                     alertTitle = "Reset Config Injected"
                     alertMessage = "Successfully wrote localConfig.json to \(writtenCount) locations in \(targetBundle).\n\n1. Open Free Fire once to trigger the guest wipe.\n2. Close the game completely.\n3. Return here and tap 'Remove Reset Config'."
@@ -375,13 +424,13 @@ struct ExternalPatchHubView: View {
     }
 
     private func removeResetGuestConfig() {
-        guard !isProcessing else { return }
-        isProcessing = true
+        guard !isRemovingResetConfig else { return }
+        isRemovingResetConfig = true
 
         Task {
             guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) else {
                 await MainActor.run {
-                    isProcessing = false
+                    isRemovingResetConfig = false
                     alertTitle = "Game Not Found"
                     alertMessage = "Could not resolve container path for \(targetBundle)."
                     showingAlert = true
@@ -411,7 +460,7 @@ struct ExternalPatchHubView: View {
             }
 
             await MainActor.run {
-                isProcessing = false
+                isRemovingResetConfig = false
                 alertTitle = "Config Cleaned"
                 alertMessage = "Removed \(removedCount) localConfig.json files from \(targetBundle). You can now play normally with your new guest session."
                 showingAlert = true
