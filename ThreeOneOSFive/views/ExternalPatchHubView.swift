@@ -22,6 +22,7 @@ struct ExternalPatchHubView: View {
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
     @AppStorage("mod.body_drag") private var bodyDragEnabled: Bool = false
     @AppStorage("mod.visuals") private var visualsEnabled: Bool = false
+    @AppStorage("guest_reset.injected") private var isGuestResetInjected: Bool = false
 
     @State private var statusMessage: String = "Ready"
     @State private var processingFeature: String? = nil
@@ -192,74 +193,62 @@ struct ExternalPatchHubView: View {
                     Text("External Toggles")
                 }
 
-                // Section 3: Guest Account Manager
+                // Section 3: Other
                 Section {
+                    // Item 1: Dynamic Guest Reset / Revert Reset
                     Button {
-                        resetGuestAccount()
+                        if isGuestResetInjected {
+                            removeResetGuestConfig()
+                        } else {
+                            resetGuestAccount()
+                        }
                     } label: {
                         HStack {
-                            AppRowIcon(systemName: "person.crop.circle.badge.minus", tint: AppTheme.accent)
+                            AppRowIcon(
+                                systemName: isGuestResetInjected ? "arrow.uturn.backward.circle.fill" : "person.crop.circle.badge.minus",
+                                tint: isGuestResetInjected ? .orange : AppTheme.accent
+                            )
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Reset Guest Account")
+                                Text(isGuestResetInjected ? "Revert Reset" : "Guest Reset")
                                     .fontWeight(.medium)
-                                Text("Reset your Guest Account : \(targetBundle)")
+                                    .foregroundStyle(isGuestResetInjected ? Color.orange : Color.primary)
+                                Text(isGuestResetInjected ? "Remove config to finish guest wipe & play" : "Wipes guest session on next game launch")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if isResettingGuest {
+                            if isResettingGuest || isRemovingResetConfig {
                                 ProgressView()
                             }
                         }
                     }
                     .disabled(isResettingGuest || isRemovingResetConfig || isRestoringGame)
 
-                    Button(role: .destructive) {
-                        removeResetGuestConfig()
-                    } label: {
-                        HStack {
-                            AppRowIcon(systemName: "trash", tint: .red)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Remove Reset Config")
-                                    .fontWeight(.medium)
-                                Text("Deletes config after guest reset")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if isRemovingResetConfig {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(isResettingGuest || isRemovingResetConfig || isRestoringGame)
-                } header: {
-                    Text("Guest Account Manager")
-                } footer: {
-                    Text("Tap 'Reset Guest Account', open Free Fire once to initialize the wipe, then close the game and tap 'Remove Reset Config'.")
-                }
-
-                // Section 4: Execution / Safety
-                Section {
+                    // Item 2: Reset All Changes (Restore original & turn off all active toggles/skins)
                     Button(role: .destructive) {
                         restoreAllDefaults()
                     } label: {
                         HStack {
+                            AppRowIcon(systemName: "arrow.counterclockwise.circle.fill", tint: .red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Reset All Changes")
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.red)
+                                Text("Deactivates all mods & restores original game files")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                             Spacer()
                             if isRestoringGame {
                                 ProgressView()
-                                    .padding(.trailing, 8)
                             }
-                            Text("Restore Game to Original (Clean)")
-                                .fontWeight(.semibold)
-                            Spacer()
                         }
                     }
                     .disabled(isRestoringGame || isResettingGuest || isRemovingResetConfig)
                 } header: {
-                    Text("Execution & Safety")
+                    Text("Other")
                 } footer: {
-                    Text("Make sure the target game is closed before restoring.")
+                    Text("Use Guest Reset to wipe guest data. Use Reset All Changes to restore all original game files and disable active mods.")
                 }
             }
             .navigationTitle("Menu")
@@ -348,15 +337,28 @@ struct ExternalPatchHubView: View {
                 }
             }
 
+            // Also remove any active applied skins
+            for skin in SkinPatchService.shared.skins {
+                if SkinPatchService.shared.isApplied(skinID: skin.id) {
+                    SkinPatchService.shared.removeSkin(skin: skin, targetBundle: targetBundle) { _, _ in }
+                }
+            }
+
+            // If guest reset config was injected, clean it up
+            if isGuestResetInjected {
+                cleanGuestConfigFiles()
+            }
+
             await MainActor.run {
                 aimStableEnabled = false
                 fps144Enabled = false
                 magicBulletEnabled = false
                 bodyDragEnabled = false
                 visualsEnabled = false
+                isGuestResetInjected = false
                 isRestoringGame = false
-                alertTitle = "Restore Complete"
-                alertMessage = "Restored original game files (\(restoredCount) files reverted)."
+                alertTitle = "Reset All Changes"
+                alertMessage = "All changes reset successfully!"
                 showingAlert = true
             }
         }
@@ -412,8 +414,9 @@ struct ExternalPatchHubView: View {
             await MainActor.run {
                 isResettingGuest = false
                 if writtenCount > 0 {
-                    alertTitle = "Reset Config Injected"
-                    alertMessage = "Successfully wrote localConfig.json to \(writtenCount) locations in \(targetBundle).\n\n1. Open Free Fire once to trigger the guest wipe.\n2. Close the game completely.\n3. Return here and tap 'Remove Reset Config'."
+                    isGuestResetInjected = true
+                    alertTitle = "Guest Reset"
+                    alertMessage = "Guest reset successfully!"
                 } else {
                     alertTitle = "Injection Failed"
                     alertMessage = "Could not write reset config. Check exploit sandbox permissions."
@@ -428,44 +431,45 @@ struct ExternalPatchHubView: View {
         isRemovingResetConfig = true
 
         Task {
-            guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) else {
-                await MainActor.run {
-                    isRemovingResetConfig = false
-                    alertTitle = "Game Not Found"
-                    alertMessage = "Could not resolve container path for \(targetBundle)."
-                    showingAlert = true
-                }
-                return
-            }
-
-            let fileManager = FileManager.default
-            let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
-
-            let targetFiles = [
-                containerURL.appendingPathComponent("Documents/localConfig.json"),
-                containerURL.appendingPathComponent("Library/Application Support/localConfig.json"),
-                containerURL.appendingPathComponent("Library/Caches/localConfig.json")
-            ]
-
-            var removedCount = 0
-            for file in targetFiles {
-                if fileManager.fileExists(atPath: file.path) {
-                    do {
-                        try fileManager.removeItem(at: file)
-                        removedCount += 1
-                    } catch {
-                        log("hub: failed deleting \(file.path): \(error.localizedDescription)")
-                    }
-                }
-            }
+            _ = cleanGuestConfigFiles()
 
             await MainActor.run {
                 isRemovingResetConfig = false
-                alertTitle = "Config Cleaned"
-                alertMessage = "Removed \(removedCount) localConfig.json files from \(targetBundle). You can now play normally with your new guest session."
+                isGuestResetInjected = false
+                alertTitle = "Revert Reset"
+                alertMessage = "Reverted reset successfully!"
                 showingAlert = true
             }
         }
+    }
+
+    @discardableResult
+    private func cleanGuestConfigFiles() -> Int {
+        guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) else {
+            return 0
+        }
+
+        let fileManager = FileManager.default
+        let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+
+        let targetFiles = [
+            containerURL.appendingPathComponent("Documents/localConfig.json"),
+            containerURL.appendingPathComponent("Library/Application Support/localConfig.json"),
+            containerURL.appendingPathComponent("Library/Caches/localConfig.json")
+        ]
+
+        var removedCount = 0
+        for file in targetFiles {
+            if fileManager.fileExists(atPath: file.path) {
+                do {
+                    try fileManager.removeItem(at: file)
+                    removedCount += 1
+                } catch {
+                    log("hub: failed deleting \(file.path): \(error.localizedDescription)")
+                }
+            }
+        }
+        return removedCount
     }
     
     private func log(_ message: String) {
