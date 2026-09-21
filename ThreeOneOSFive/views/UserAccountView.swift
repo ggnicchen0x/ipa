@@ -64,26 +64,6 @@ struct UserAccountView: View {
                 }
 
                 Section {
-                    HStack {
-                        Label("Kernel Status", systemImage: "bolt.shield")
-                        Spacer()
-                        Text(appState.exploitStatus.isSuccess ? "Active & Rooted" : "Ready to Exploit")
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(appState.exploitStatus.isSuccess ? .green : .orange)
-                    }
-
-                    HStack {
-                        Label("Exploit Engine", systemImage: "cpu")
-                        Spacer()
-                        Text(appState.exploitStatus.displayText)
-                            .font(.footnote.monospaced())
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Security & Core Status")
-                }
-
-                Section {
                     LabeledContent {
                         Text(AuthService.shared.activeLicense.isEmpty ? "Authorized Session" : AuthService.shared.activeLicense)
                             .font(.footnote.monospaced())
