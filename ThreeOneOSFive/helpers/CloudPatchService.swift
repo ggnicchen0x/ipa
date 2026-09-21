@@ -52,7 +52,8 @@ public final class CloudPatchService {
             "token": token,
             "device_hash": hwid,
             "timestamp": timestamp,
-            "signature": signature
+            "signature": signature,
+            "app_version": auth.appVersion
         ]
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
@@ -83,6 +84,40 @@ public final class CloudPatchService {
                 return
             }
             
+            // Handle HTTP 426 Force Update
+            if httpResponse.statusCode == 426 {
+                var notes = "A new update is available. Please download the latest version."
+                var latestVer = ""
+                var dUrl = "https://github.com/nicchen0xf/Swift-ios/releases"
+                if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    latestVer = json["latest_version"] as? String ?? ""
+                    notes = json["release_notes"] as? String ?? (json["detail"] as? String ?? notes)
+                    dUrl = json["download_url"] as? String ?? dUrl
+                }
+                DispatchQueue.main.async {
+                    auth.updateTitle = "New Update Available \(latestVer.isEmpty ? "" : latestVer)"
+                    auth.updateMessage = notes
+                    auth.updateDownloadURL = dUrl
+                    auth.updateDetected = true
+                    completion(false, "UPDATE_REQUIRED: \(notes)")
+                }
+                return
+            }
+            
+            // Handle HTTP 503 Maintenance
+            if httpResponse.statusCode == 503 {
+                var maintMsg = "Panel is Under Maintainance."
+                if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    maintMsg = json["message"] as? String ?? (json["detail"] as? String ?? maintMsg)
+                }
+                DispatchQueue.main.async {
+                    auth.maintenanceMessage = maintMsg
+                    auth.maintenanceDetected = true
+                    completion(false, maintMsg)
+                }
+                return
+            }
+            
             if httpResponse.statusCode != 200 {
                 var errorMessage = "Server rejected patch delivery (HTTP \(httpResponse.statusCode))."
                 if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -90,6 +125,10 @@ public final class CloudPatchService {
                     errorMessage = detail
                 }
                 DispatchQueue.main.async {
+                    if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                        // Key or Session Invalidated
+                        auth.logout()
+                    }
                     completion(false, errorMessage)
                 }
                 return

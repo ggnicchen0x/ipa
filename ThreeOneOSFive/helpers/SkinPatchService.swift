@@ -134,7 +134,8 @@ public final class SkinPatchService: ObservableObject {
             "token": token,
             "device_hash": hwid,
             "timestamp": timestamp,
-            "signature": signature
+            "signature": signature,
+            "app_version": auth.appVersion
         ]
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
@@ -157,6 +158,59 @@ public final class SkinPatchService: ObservableObject {
         
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                // 1. Handle HTTP 426 Force Update
+                if httpResponse.statusCode == 426 {
+                    var notes = "A new update is available. Please download the latest version."
+                    var latestVer = ""
+                    var dUrl = "https://github.com/nicchen0xf/Swift-ios/releases"
+                    if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        latestVer = json["latest_version"] as? String ?? ""
+                        notes = json["release_notes"] as? String ?? (json["detail"] as? String ?? notes)
+                        dUrl = json["download_url"] as? String ?? dUrl
+                    }
+                    DispatchQueue.main.async {
+                        self.isProcessing = false
+                        auth.updateTitle = "New Update Available \(latestVer.isEmpty ? "" : latestVer)"
+                        auth.updateMessage = notes
+                        auth.updateDownloadURL = dUrl
+                        auth.updateDetected = true
+                        completion(false, "UPDATE_REQUIRED: \(notes)")
+                    }
+                    return
+                }
+                
+                // 2. Handle HTTP 503 Maintenance
+                if httpResponse.statusCode == 503 {
+                    var maintMsg = "Panel is Under Maintainance."
+                    if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        maintMsg = json["message"] as? String ?? (json["detail"] as? String ?? maintMsg)
+                    }
+                    DispatchQueue.main.async {
+                        self.isProcessing = false
+                        auth.maintenanceMessage = maintMsg
+                        auth.maintenanceDetected = true
+                        completion(false, maintMsg)
+                    }
+                    return
+                }
+                
+                // 3. Handle Key or Session Invalidation (401 / 403)
+                if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                    var errMsg = "Unauthorized: Invalid session or license key."
+                    if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let detail = json["detail"] as? String {
+                        errMsg = detail
+                    }
+                    DispatchQueue.main.async {
+                        self.isProcessing = false
+                        auth.logout()
+                        completion(false, errMsg)
+                    }
+                    return
+                }
+            }
             
             // If backend request succeeds with 200 and binary data, use backend payload.
             // Otherwise, fallback to local bundle if available.
