@@ -473,9 +473,13 @@ enum PatchPackageCodec {
     }
 
     private static func randomData(count: Int) throws -> Data {
+        guard count > 0 else { return Data() }
         var data = Data(count: count)
-        let status = data.withUnsafeMutableBytes { buffer in
-            SecRandomCopyBytes(kSecRandomDefault, count, buffer.baseAddress!)
+        let status = data.withUnsafeMutableBytes { buffer -> Int32 in
+            guard let baseAddress = buffer.baseAddress else {
+                return errSecAllocate
+            }
+            return SecRandomCopyBytes(kSecRandomDefault, count, baseAddress)
         }
         guard status == errSecSuccess else {
             throw PatchPackageError.invalidProject

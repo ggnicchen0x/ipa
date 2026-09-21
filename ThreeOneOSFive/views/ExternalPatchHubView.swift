@@ -65,6 +65,7 @@ struct ExternalPatchHubView: View {
 
                 // Section 2: External Toggles (Self-Applying & Self-Reverting)
                 Section {
+                    // 1. Aim Drag
                     Toggle(isOn: $aimStableEnabled) {
                         Label {
                             HStack {
@@ -90,56 +91,7 @@ struct ExternalPatchHubView: View {
                         handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
                     }
 
-                    Toggle(isOn: $fps144Enabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("144 FPS Unlock")
-                                        .fontWeight(.medium)
-                                    Text("Unlocks ultra-smooth 144Hz gameplay")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "144" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "speedometer", tint: .green)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: fps144Enabled) { isEnabled in
-                        handleToggleChange(featureName: "144", isEnabled: isEnabled)
-                    }
-
-                    Toggle(isOn: $magicBulletEnabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Magic Bullet")
-                                        .fontWeight(.medium)
-                                    Text("Connect Every Single Bullets")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "magic" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "flame.fill", tint: .purple)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: magicBulletEnabled) { isEnabled in
-                        handleToggleChange(featureName: "magic", isEnabled: isEnabled)
-                    }
-
+                    // 2. Aim Body
                     Toggle(isOn: $bodyDragEnabled) {
                         Label {
                             HStack {
@@ -165,6 +117,33 @@ struct ExternalPatchHubView: View {
                         handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
                     }
 
+                    // 3. Magic Bullet
+                    Toggle(isOn: $magicBulletEnabled) {
+                        Label {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Magic Bullet")
+                                        .fontWeight(.medium)
+                                    Text("Connect Every Single Bullets")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "magic" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
+                            }
+                        } icon: {
+                            AppRowIcon(systemName: "flame.fill", tint: .purple)
+                        }
+                    }
+                    .disabled(processingFeature != nil)
+                    .onChange(of: magicBulletEnabled) { isEnabled in
+                        handleToggleChange(featureName: "magic", isEnabled: isEnabled)
+                    }
+
+                    // 4. Visuals
                     Toggle(isOn: $visualsEnabled) {
                         Label {
                             HStack {
@@ -188,6 +167,32 @@ struct ExternalPatchHubView: View {
                     .disabled(processingFeature != nil)
                     .onChange(of: visualsEnabled) { isEnabled in
                         handleToggleChange(featureName: "hologram", isEnabled: isEnabled)
+                    }
+
+                    // 5. 144 FPS Unlock
+                    Toggle(isOn: $fps144Enabled) {
+                        Label {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("144 FPS Unlock")
+                                        .fontWeight(.medium)
+                                    Text("Unlocks ultra-smooth 144Hz gameplay")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if processingFeature == "144" {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
+                            }
+                        } icon: {
+                            AppRowIcon(systemName: "speedometer", tint: .green)
+                        }
+                    }
+                    .disabled(processingFeature != nil)
+                    .onChange(of: fps144Enabled) { isEnabled in
+                        handleToggleChange(featureName: "144", isEnabled: isEnabled)
                     }
                 } header: {
                     Text("External Toggles")

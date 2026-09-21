@@ -95,19 +95,21 @@ public final class SkinPatchService: ObservableObject {
         targetBundle: String,
         completion: @escaping (Bool, String) -> Void
     ) {
-        isProcessing = true
-        
         let auth = AuthService.shared
         guard auth.isAuthenticated else {
-            isProcessing = false
-            completion(false, "Authentication required. Please log in first.")
+            DispatchQueue.main.async {
+                self.isProcessing = false
+                completion(false, "Authentication required. Please log in first.")
+            }
             return
         }
         
         let token = auth.currentSessionToken
         guard !token.isEmpty else {
-            isProcessing = false
-            completion(false, "Active session token missing. Please log in again.")
+            DispatchQueue.main.async {
+                self.isProcessing = false
+                completion(false, "Active session token missing. Please log in again.")
+            }
             return
         }
         
@@ -120,8 +122,10 @@ public final class SkinPatchService: ObservableObject {
         let signature = auth.hmacSHA256(payload: sigPayload, key: auth.hmacSecretValue)
         
         guard let url = URL(string: "\(auth.serverBaseURL)/api/v1/patches/fetch") else {
-            isProcessing = false
-            completion(false, "Invalid patch delivery endpoint configuration.")
+            DispatchQueue.main.async {
+                self.isProcessing = false
+                completion(false, "Invalid patch delivery endpoint configuration.")
+            }
             return
         }
         
@@ -134,9 +138,15 @@ public final class SkinPatchService: ObservableObject {
         ]
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            isProcessing = false
-            completion(false, "Failed to serialize patch request.")
+            DispatchQueue.main.async {
+                self.isProcessing = false
+                completion(false, "Failed to serialize patch request.")
+            }
             return
+        }
+        
+        DispatchQueue.main.async {
+            self.isProcessing = true
         }
         
         var request = URLRequest(url: url)
@@ -240,7 +250,9 @@ public final class SkinPatchService: ObservableObject {
         targetBundle: String,
         completion: @escaping (Bool, String) -> Void
     ) {
-        isProcessing = true
+        DispatchQueue.main.async {
+            self.isProcessing = true
+        }
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }

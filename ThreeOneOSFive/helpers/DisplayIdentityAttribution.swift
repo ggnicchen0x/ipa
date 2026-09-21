@@ -54,8 +54,8 @@ private struct WindowLongPressView: UIViewRepresentable {
                 ?? allWindows.first(where: { $0.isKeyWindow })
                 ?? allWindows.first
             guard let win else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak hostView] in
-                    guard let hv = hostView else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak hostView, weak self] in
+                    guard let hv = hostView, let self = self else { return }
                     self.installIfNeeded(hostView: hv)
                 }
                 return
@@ -73,8 +73,8 @@ private struct WindowLongPressView: UIViewRepresentable {
             win.addGestureRecognizer(r)
             recognizer = r
             // Re-check after scene transitions (onboarding dismiss, etc.)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak hostView] in
-                guard let hv = hostView else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak hostView, weak self] in
+                guard let hv = hostView, let self = self else { return }
                 if hv.window != nil, hv.window !== win { self.installIfNeeded(hostView: hv) }
             }
         }

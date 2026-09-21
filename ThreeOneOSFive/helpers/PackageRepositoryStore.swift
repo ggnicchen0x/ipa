@@ -435,18 +435,18 @@ final class PackageRepositoryStore: ObservableObject {
 
     private func installSimulatorWallpaperRepository() {
         let revision = "f04c0a8e81c328201ad7769fac16b907ce905035"
-        let sourceURL = URL(
+        guard let sourceURL = URL(
             string: "https://raw.githubusercontent.com/YangJiiii/3105-repo/main/" +
                 "repositories/demo/repo.json"
-        )!
+        ),
         let previewURL = URL(
             string: "https://raw.githubusercontent.com/SerStars/" +
                 "Nugget-Wallpapers/\(revision)/previews/custom/gifs/Cipher.gif"
-        )!
+        ),
         let downloadURL = URL(
             string: "https://raw.githubusercontent.com/SerStars/" +
                 "Nugget-Wallpapers/\(revision)/wallpapers/custom/Cipher.tendies"
-        )!
+        ) else { return }
         let source = RepositorySource(manifestURL: sourceURL)
         let ranges = [
             PackageOSRange(minimum: "17.0", maximum: "18.7.1", builds: nil),
