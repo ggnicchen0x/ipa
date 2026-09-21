@@ -36,7 +36,7 @@ public final class SkinPatchService: ObservableObject {
     private let lock = NSLock()
     private let storageKey = "applied_skin_ids_set"
     
-    // Complete skin catalog
+    // Complete skin catalog (Ignis, Bunny, Spider)
     public let skins: [SkinItem] = [
         SkinItem(
             id: "mod_ignis",
@@ -47,20 +47,20 @@ public final class SkinPatchService: ObservableObject {
             characterName: "Ignis"
         ),
         SkinItem(
-            id: "mod_spider",
-            name: "Mod Spider",
-            imageName: "mod_spider",
-            description: "Works on Awakened Alok Character , Make sure character is download before applying",
-            patchFileName: "Mod_Spider.3105",
-            characterName: "Awakened Alok"
-        ),
-        SkinItem(
             id: "mod_bunny",
             name: "Mod Bunny",
             imageName: "mod_bunny",
-            description: "Works on FF Max Bunny Bundle / Character , Make sure pack is download before applying",
+            description: "Works on FF Max Ignis Character , Make sure character is download before applying",
             patchFileName: "Mod_Bunny.3105",
-            characterName: "Bunny"
+            characterName: "Ignis"
+        ),
+        SkinItem(
+            id: "mod_spider",
+            name: "Mod Spider",
+            imageName: "mod_spider",
+            description: "Works on FF Max Awakened Alok Character , Make sure character is download before applying",
+            patchFileName: "Mod_Spider.3105",
+            characterName: "Awakened Alok"
         )
     ]
     
