@@ -220,35 +220,106 @@ public final class AuthService: ObservableObject {
         }
         
         let hwid = self.hardwareID
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let signaturePayload = "\(cleanKey):\(hwid):\(timestamp)"
-        let signature = hmacSHA256(payload: signaturePayload, key: hmacSecret)
         
-        let requestBody: [String: Any] = [
-            "license_key": cleanKey,
-            "device_hash": hwid,
-            "device_name": UIDevice.current.name,
-            "device_model": deviceModelName(),
-            "os_version": "iOS \(UIDevice.current.systemVersion)",
-            "app_version": self.appVersion,
-            "timestamp": timestamp,
-            "signature": signature
-        ]
-        
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            completion(false, "Failed to encode request payload.")
+        // Ensure hardware ECDSA key exists
+        guard let privateKey = getOrCreateV2DeviceKey(),
+              let pubKeyHex = getV2PublicKeyHex(privateKey: privateKey) else {
+            completion(false, "Failed to initialize hardware cryptographic key.")
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = jsonData
-        request.timeoutInterval = 12.0
+        guard let challengeURL = URL(string: "\(serverBaseURL)/api/v2/auth/challenge") else {
+            completion(false, "Invalid server endpoint configuration.")
+            return
+        }
         
         DispatchQueue.main.async { self.isLoading = true }
         
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        // Step 1: Fetch Challenge Nonce from Server
+        let challengePayload: [String: Any] = [
+            "device_hash": hwid,
+            "client_version": self.appVersion
+        ]
+        
+        guard let challengeData = try? JSONSerialization.data(withJSONObject: challengePayload) else {
+            DispatchQueue.main.async { self.isLoading = false }
+            completion(false, "Failed to encode challenge request.")
+            return
+        }
+        
+        var chalReq = URLRequest(url: challengeURL)
+        chalReq.httpMethod = "POST"
+        chalReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        chalReq.httpBody = challengeData
+        chalReq.timeoutInterval = 10.0
+        
+        URLSession.shared.dataTask(with: chalReq) { [weak self] cData, cResp, cErr in
+            guard let self = self else { return }
+            
+            if let cErr = cErr {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    completion(false, "Challenge connection error: \(cErr.localizedDescription)")
+                }
+                return
+            }
+            
+            guard let cHTTP = cResp as? HTTPURLResponse,
+                  let cData = cData,
+                  let chalJSON = (try? JSONSerialization.jsonObject(with: cData)) as? [String: Any],
+                  let nonce = chalJSON["nonce"] as? String else {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    completion(false, "Security gateway challenge failed. Please check server connection.")
+                }
+                return
+            }
+            
+            // Step 2: Sign Canonical Context: V2-AUTH:{nonce}:{cleanKey}:{hwid}:{appVersion}
+            let canonicalContext = "V2-AUTH:\(nonce):\(cleanKey):\(hwid):\(self.appVersion)"
+            guard let signatureHex = self.signV2CanonicalMessage(privateKey: privateKey, canonicalMessage: canonicalContext) else {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    completion(false, "Hardware signature generation failed.")
+                }
+                return
+            }
+            
+            guard let loginURL = URL(string: "\(self.serverBaseURL)/api/v2/auth/login") else {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    completion(false, "Invalid login endpoint configuration.")
+                }
+                return
+            }
+            
+            let requestBody: [String: Any] = [
+                "license_key": cleanKey,
+                "device_hash": hwid,
+                "nonce": nonce,
+                "device_public_key": pubKeyHex,
+                "device_signature": signatureHex,
+                "device_name": UIDevice.current.name,
+                "device_model": self.deviceModelName(),
+                "os_version": "iOS \(UIDevice.current.systemVersion)",
+                "app_version": self.appVersion
+            ]
+            
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    completion(false, "Failed to encode login payload.")
+                }
+                return
+            }
+            
+            var request = URLRequest(url: loginURL)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = jsonData
+            request.timeoutInterval = 12.0
+            
+            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
             DispatchQueue.main.async { self.isLoading = false }
             
@@ -368,6 +439,7 @@ public final class AuthService: ObservableObject {
                 completion(false, errorMessage)
             }
         }.resume()
+        }.resume()
     }
     
     // MARK: - Online Version & Update Check
@@ -446,7 +518,7 @@ public final class AuthService: ObservableObject {
     
     // MARK: - Silent Session Validation (App Launch)
     private func validateSessionSilently(token: String) {
-        guard let url = URL(string: "\(serverBaseURL)/api/v1/auth/validate") else { return }
+        guard let url = URL(string: "\(serverBaseURL)/api/v2/auth/validate") else { return }
         
         let hwid = self.hardwareID
         let timestamp = Int(Date().timeIntervalSince1970)
@@ -596,6 +668,54 @@ public final class AuthService: ObservableObject {
             kSecAttrAccount as String: key
         ]
         SecItemDelete(query as CFDictionary)
+    }
+    
+    // MARK: - Protocol v2 Asymmetric Hardware Cryptography (ECDSA P-256)
+    private let v2KeyTag = "com.threeoneosfive.auth.v2_device_key".data(using: .utf8)!
+    
+    public func getOrCreateV2DeviceKey() -> SecKey? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: v2KeyTag,
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecReturnRef as String: true
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecSuccess, let existingKey = item {
+            return (existingKey as! SecKey)
+        }
+        
+        let attributes: [String: Any] = [
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeySizeInBits as String: 256,
+            kSecPrivateKeyAttrs as String: [
+                kSecAttrIsPermanent as String: true,
+                kSecAttrApplicationTag as String: v2KeyTag,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            ]
+        ]
+        var error: Unmanaged<CFError>?
+        guard let newKey = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
+            return nil
+        }
+        return newKey
+    }
+    
+    public func getV2PublicKeyHex(privateKey: SecKey) -> String? {
+        guard let publicKey = SecKeyCopyPublicKey(privateKey) else { return nil }
+        var error: Unmanaged<CFError>?
+        guard let pubData = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else { return nil }
+        return pubData.map { String(format: "%02x", $0) }.joined()
+    }
+    
+    public func signV2CanonicalMessage(privateKey: SecKey, canonicalMessage: String) -> String? {
+        guard let messageData = canonicalMessage.data(using: .utf8) else { return nil }
+        var error: Unmanaged<CFError>?
+        guard let signatureData = SecKeyCreateSignature(privateKey, .ecdsaSignatureMessageX962SHA256, messageData as CFData, &error) as Data? else {
+            return nil
+        }
+        return signatureData.map { String(format: "%02x", $0) }.joined()
     }
     
     // MARK: - Cryptographic Utilities

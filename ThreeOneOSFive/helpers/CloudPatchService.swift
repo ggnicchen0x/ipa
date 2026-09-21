@@ -42,7 +42,7 @@ public final class CloudPatchService {
         let sigPayload = "\(normalizedKey):\(hwid):\(timestamp)"
         let signature = auth.hmacSHA256(payload: sigPayload, key: auth.hmacSecretValue)
         
-        guard let url = URL(string: "\(auth.serverBaseURL)/api/v1/patches/fetch") else {
+        guard let url = URL(string: "\(auth.serverBaseURL)/api/v2/patches/fetch") else {
             completion(false, "Invalid patch delivery endpoint configuration.")
             return
         }
