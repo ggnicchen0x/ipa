@@ -224,7 +224,7 @@ public final class SkinPatchService: ObservableObject {
                     self.appliedSkinIDs.insert(skin.id)
                     self.saveAppliedState()
                     self.isProcessing = false
-                    completion(true, "Applied \(skin.name) successfully from Cloud Backend!")
+                    completion(true, "Applied \(skin.name) successfully!")
                 }
             } catch {
                 DispatchQueue.main.async {
