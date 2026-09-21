@@ -1,7 +1,7 @@
 import SwiftUI
 
 private enum OnboardingStep: Int, CaseIterable {
-    case language = 0, welcome, versions, install
+    case welcome = 0, versions
 
     var next: OnboardingStep? { Self(rawValue: rawValue + 1) }
     var prev: OnboardingStep? { Self(rawValue: rawValue - 1) }
@@ -15,7 +15,7 @@ private enum OnboardingNavigationDirection {
 struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
-    @State private var step: OnboardingStep = .language
+    @State private var step: OnboardingStep = .welcome
     @State private var navigationDirection: OnboardingNavigationDirection = .forward
     var onComplete: () -> Void
 
@@ -101,76 +101,9 @@ struct OnboardingView: View {
     @ViewBuilder
     private func page(for s: OnboardingStep) -> some View {
         switch s {
-        case .language: languagePage
         case .welcome: welcomePage
         case .versions: versionsPage
-        case .install: installPage
         }
-    }
-
-    private var languagePage: some View {
-        VStack(spacing: 24) {
-            AppLogo(size: 72)
-
-            VStack(spacing: 8) {
-                Text(language.text("onboarding.language_title"))
-                    .font(.title2.weight(.bold))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(language.text("onboarding.language_subtitle"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(spacing: 12) {
-                ForEach(AppLanguage.allCases) { option in
-                    let isSelected = languageCode == option.rawValue
-                    Button {
-                        languageCode = option.rawValue
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(option.displayName)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.primary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer()
-                            if isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(AppTheme.accent)
-                                    .font(.title3)
-                                    .transition(.scale.combined(with: .opacity))
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundStyle(.secondary.opacity(0.5))
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 56)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color(uiColor: .secondarySystemBackground))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .stroke(isSelected ? AppTheme.accent : Color.secondary.opacity(0.12), lineWidth: 1)
-                                )
-                        )
-                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                    .animation(motionAnimation, value: languageCode)
-                }
-            }
-
-            Text(language.text("onboarding.language_hint", language.displayName))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     private var welcomePage: some View {
@@ -270,42 +203,6 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .top)
     }
 
-    private var installPage: some View {
-        VStack(spacing: 20) {
-            featureIcon(systemName: "exclamationmark.shield.fill", color: .orange)
-
-            VStack(spacing: 8) {
-                Text(language.text("onboarding.install_title"))
-                    .font(.title3.weight(.bold))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(language.text("onboarding.install_message"))
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                installBullet(icon: "checkmark.seal.fill", text: language.text("onboarding.install_ok"), color: .green)
-                installBullet(icon: "xmark.octagon.fill", text: language.text("onboarding.install_bad"), color: .red)
-                installBullet(icon: "exclamationmark.triangle.fill", text: language.text("onboarding.install_jailbreak"), color: .orange)
-            }
-            .padding(14)
-            .background(
-                Color(uiColor: .secondarySystemBackground),
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-            )
-
-            Text(language.text("onboarding.install_footer"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-    }
-
     private func featureIcon(systemName: String, color: Color) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -351,20 +248,6 @@ struct OnboardingView: View {
         .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
-    private func installBullet(icon: String, text: String, color: Color) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(color)
-                .font(.body.weight(.semibold))
-                .frame(width: 20)
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private var controls: some View {
         VStack(spacing: 12) {
             ViewThatFits(in: .horizontal) {
@@ -389,7 +272,7 @@ struct OnboardingView: View {
 
     @ViewBuilder
     private var controlButtons: some View {
-        if step != .language {
+        if step != .welcome {
             Button {
                 guard let previousStep = step.prev else { return }
                 navigate(to: previousStep, direction: .backward)
@@ -409,8 +292,8 @@ struct OnboardingView: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Text(language.text(step == .install ? "common.finish" : "common.next"))
-                if step != .install {
+                Text(language.text(step == .versions ? "common.finish" : "common.next"))
+                if step != .versions {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .accessibilityHidden(true)

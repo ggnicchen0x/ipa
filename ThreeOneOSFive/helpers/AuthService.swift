@@ -214,11 +214,6 @@ public final class AuthService: ObservableObject {
             return
         }
         
-        guard let url = URL(string: "\(serverBaseURL)/api/v1/auth/login") else {
-            completion(false, "Invalid server endpoint configuration.")
-            return
-        }
-        
         let hwid = self.hardwareID
         
         // Ensure hardware ECDSA key exists
@@ -444,7 +439,7 @@ public final class AuthService: ObservableObject {
     
     // MARK: - Online Version & Update Check
     public func checkForUpdates(completion: ((Bool) -> Void)? = nil) {
-        guard let url = URL(string: "\(serverBaseURL)/api/v1/auth/version-check") else {
+        guard let url = URL(string: "\(serverBaseURL)/api/v2/auth/version-check") else {
             completion?(false)
             return
         }
