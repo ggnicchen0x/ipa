@@ -85,7 +85,6 @@
 		3105N206 /* SkinsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N106; };
 		3105N207 /* SkinPatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N107; };
 		3105N208 /* ErrorSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N108; };
-		3105N209 /* APNsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N109; };
 		3105N210 /* ReleasesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N110; };
 		3105N211 /* ReleaseNotesModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N111; };
 /* End PBXBuildFile section */
@@ -187,7 +186,6 @@
 		3105N106 /* SkinsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinsView.swift; sourceTree = "<group>"; };
 		3105N107 /* SkinPatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinPatchService.swift; sourceTree = "<group>"; };
 		3105N108 /* ErrorSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorSanitizer.swift; sourceTree = "<group>"; };
-		3105N109 /* APNsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APNsManager.swift; sourceTree = "<group>"; };
 		3105N110 /* ReleasesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleasesService.swift; sourceTree = "<group>"; };
 		3105N111 /* ReleaseNotesModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseNotesModalView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -309,7 +307,6 @@
 				3105N105 /* CloudPatchService.swift */,
 				3105N107 /* SkinPatchService.swift */,
 				3105N108 /* ErrorSanitizer.swift */,
-				3105N109 /* APNsManager.swift */,
 				3105N110 /* ReleasesService.swift */,
 				3105C100 /* PatchDraftService.swift */,
 				3105C101 /* PatchDraftCoordinator.swift */,
@@ -486,7 +483,6 @@
 				3105N206,
 				3105N207,
 				3105N208,
-				3105N209,
 				3105N210,
 				3105N211,
 			);

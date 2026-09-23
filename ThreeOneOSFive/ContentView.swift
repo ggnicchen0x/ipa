@@ -90,15 +90,11 @@ struct ContentView: View {
         .onAppear {
             if authService.isAuthenticated {
                 releasesService.fetchUnseenReleases()
-                APNsManager.shared.sendTokenToBackendIfNeeded()
-                APNsManager.shared.checkForUnreadBroadcasts()
             }
         }
         .onChange(of: authService.isAuthenticated) { isAuth in
             if isAuth {
                 releasesService.fetchUnseenReleases()
-                APNsManager.shared.sendTokenToBackendIfNeeded()
-                APNsManager.shared.checkForUnreadBroadcasts()
             }
         }
         .patchStorePresentation(patchStore)

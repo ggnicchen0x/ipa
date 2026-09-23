@@ -1,34 +1,9 @@
 import SwiftUI
 import UIKit
-import UserNotifications
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
-    ) -> Bool {
-        APNsManager.shared.requestAuthorization()
-        return true
-    }
-    
-    func application(
-        _ application: UIApplication,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-    ) {
-        APNsManager.shared.didRegisterForRemoteNotifications(with: deviceToken)
-    }
-    
-    func application(
-        _ application: UIApplication,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    ) {
-        APNsManager.shared.didFailToRegisterForRemoteNotifications(with: error)
-    }
-}
 
 @main
 struct ThreeOneOSFiveApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     @StateObject private var appState = AppState()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator()
@@ -102,7 +77,6 @@ struct ThreeOneOSFiveApp: App {
                 guard phase == .active, !showOnboarding else { return }
                 appState.detectSupport()
                 if AuthService.shared.isAuthenticated {
-                    APNsManager.shared.checkForUnreadBroadcasts()
                     ReleasesService.shared.fetchUnseenReleases()
                 }
             }
