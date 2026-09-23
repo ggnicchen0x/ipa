@@ -104,6 +104,11 @@ public final class ReleasesService: ObservableObject {
                       let pkgName = r["package_name"] as? String,
                       let filename = r["filename"] as? String else { continue }
                 
+                // Double-lock: skip if already seen locally in UserDefaults
+                if UserDefaults.standard.bool(forKey: "seen_release_\(relId)") {
+                    continue
+                }
+                
                 let verTag = r["version_tag"] as? String ?? "v1.0"
                 let notes = r["release_notes"] as? String ?? ""
                 let features = r["changed_features"] as? [String] ?? []
@@ -134,19 +139,24 @@ public final class ReleasesService: ObservableObject {
         }.resume()
     }
     
-    /// Acknowledges a release on the server so the changelog notice will NEVER appear again for this device.
+    /// Acknowledges a release on both client UserDefaults and the server so the changelog notice will NEVER appear again.
     public func acknowledgeRelease(release: PackageReleaseInfo, completion: (() -> Void)? = nil) {
         let auth = AuthService.shared
         let token = auth.currentSessionToken
         let hwid = auth.hardwareID
         
-        // Remove locally first for instant UI response
+        // 1. Immediately double-lock in local UserDefaults
+        UserDefaults.standard.set(true, forKey: "seen_release_\(release.releaseId)")
+        UserDefaults.standard.synchronize()
+        
+        // 2. Clear from active UI state
         DispatchQueue.main.async {
             self.unseenReleases.removeAll(where: { $0.releaseId == release.releaseId })
-            self.activeModalRelease = self.unseenReleases.first
+            self.activeModalRelease = nil
             completion?()
         }
         
+        // 3. Persist to backend
         guard let url = URL(string: "\(auth.serverBaseURL)/api/v2/releases/acknowledge") else { return }
         let requestBody: [String: Any] = [
             "device_hash": hwid,
