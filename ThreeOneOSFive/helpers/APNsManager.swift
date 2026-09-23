@@ -91,6 +91,105 @@ public final class APNsManager: NSObject, ObservableObject, UNUserNotificationCe
         }.resume()
     }
     
+    /// Checks the backend for unread push broadcasts and presents them as native iOS Lockscreen notifications.
+    public func checkForUnreadBroadcasts() {
+        let auth = AuthService.shared
+        guard auth.isAuthenticated else { return }
+        let sessionToken = auth.currentSessionToken
+        guard !sessionToken.isEmpty else { return }
+        
+        let hwid = auth.hardwareID
+        guard let url = URL(string: "\(auth.serverBaseURL)/api/v2/notifications/unread") else { return }
+        
+        let requestBody: [String: Any] = [
+            "device_hash": hwid,
+            "token": sessionToken
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        request.timeoutInterval = 8.0
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self,
+                  let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let list = json["notifications"] as? [[String: Any]] else { return }
+            
+            for item in list {
+                guard let notifId = item["id"] as? Int,
+                      let title = item["title"] as? String,
+                      let body = item["body"] as? String else { continue }
+                
+                let seenKey = "seen_local_notif_\(notifId)"
+                if UserDefaults.standard.bool(forKey: seenKey) {
+                    continue
+                }
+                
+                // 1. Mark seen locally immediately
+                UserDefaults.standard.set(true, forKey: seenKey)
+                UserDefaults.standard.synchronize()
+                
+                // 2. Fire native iOS Lockscreen / Dynamic Island Notification Banner
+                self.scheduleLocalNotification(id: notifId, title: title, body: body)
+                
+                // 3. Acknowledge on server
+                self.acknowledgeNotification(notifId: notifId)
+            }
+        }.resume()
+    }
+    
+    private func scheduleLocalNotification(id: Int, title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.badge = 1
+        
+        // Immediate trigger
+        let req = UNNotificationRequest(
+            identifier: "broadcast_notif_\(id)",
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(req) { error in
+            if let error = error {
+                log("apns: local notification trigger error: \(error.localizedDescription)")
+            } else {
+                log("apns: local notification fired onto lockscreen: \(title)")
+            }
+        }
+    }
+    
+    private func acknowledgeNotification(notifId: Int) {
+        let auth = AuthService.shared
+        let sessionToken = auth.currentSessionToken
+        let hwid = auth.hardwareID
+        guard let url = URL(string: "\(auth.serverBaseURL)/api/v2/notifications/acknowledge") else { return }
+        
+        let requestBody: [String: Any] = [
+            "device_hash": hwid,
+            "token": sessionToken,
+            "notification_id": notifId
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        request.timeoutInterval = 8.0
+        
+        URLSession.shared.dataTask(with: request).resume()
+    }
+    
     // MARK: - UNUserNotificationCenterDelegate
     
     public func userNotificationCenter(
