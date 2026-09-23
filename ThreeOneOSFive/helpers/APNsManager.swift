@@ -8,6 +8,7 @@ public final class APNsManager: NSObject, ObservableObject, UNUserNotificationCe
     @Published public var devicePushToken: String? = nil
     @Published public var isRegistered: Bool = false
     
+    private let tokenStorageKey = "com.threeoneosfive.apns.device_token"
     private var pollTimer: Timer?
     
     private override init() {
