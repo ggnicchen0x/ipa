@@ -3,6 +3,7 @@ import UIKit
 
 struct ContentView: View {
     @ObservedObject private var authService = AuthService.shared
+    @ObservedObject private var releasesService = ReleasesService.shared
     @Environment(\.appLanguage) private var language
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var patchDraftCoordinator: PatchDraftCoordinator
@@ -83,6 +84,21 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showLogs) { LogView() }
+        .sheet(item: $releasesService.activeModalRelease) { release in
+            ReleaseNotesModalView(release: release)
+        }
+        .onAppear {
+            if authService.isAuthenticated {
+                releasesService.fetchUnseenReleases()
+                APNsManager.shared.sendTokenToBackendIfNeeded()
+            }
+        }
+        .onChange(of: authService.isAuthenticated) { isAuth in
+            if isAuth {
+                releasesService.fetchUnseenReleases()
+                APNsManager.shared.sendTokenToBackendIfNeeded()
+            }
+        }
         .patchStorePresentation(patchStore)
         .repositoryStorePresentation(repositoryStore, patchStore: patchStore)
     }
