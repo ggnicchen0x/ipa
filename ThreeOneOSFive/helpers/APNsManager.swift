@@ -8,11 +8,18 @@ public final class APNsManager: NSObject, ObservableObject, UNUserNotificationCe
     @Published public var devicePushToken: String? = nil
     @Published public var isRegistered: Bool = false
     
-    private let tokenStorageKey = "com.threeoneosfive.apns.device_token"
+    private var pollTimer: Timer?
     
     private override init() {
         super.init()
         self.devicePushToken = UserDefaults.standard.string(forKey: tokenStorageKey)
+        
+        // Periodic background/live broadcast poll every 15 seconds
+        DispatchQueue.main.async {
+            self.pollTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [weak self] _ in
+                self?.checkForUnreadBroadcasts()
+            }
+        }
     }
     
     /// Requests push notification authorization from iOS and registers for remote notifications.

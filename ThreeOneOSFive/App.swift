@@ -101,6 +101,10 @@ struct ThreeOneOSFiveApp: App {
             .onChange(of: scenePhase) { phase in
                 guard phase == .active, !showOnboarding else { return }
                 appState.detectSupport()
+                if AuthService.shared.isAuthenticated {
+                    APNsManager.shared.checkForUnreadBroadcasts()
+                    ReleasesService.shared.fetchUnseenReleases()
+                }
             }
             .onOpenURL { url in
                 patchDraftCoordinator.presentImport(url)
