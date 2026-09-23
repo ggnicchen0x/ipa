@@ -231,10 +231,8 @@ extension PatchPackageError: LocalizedError {
 
     var localizationArgument: String? {
         switch self {
-        case .targetAppUnavailable(let bundleID), .targetOccupied(let bundleID):
+        case .targetAppUnavailable(let bundleID):
             return bundleID
-        case .restoreTargetsChanged(let paths):
-            return paths.joined(separator: "\n")
         default:
             return nil
         }

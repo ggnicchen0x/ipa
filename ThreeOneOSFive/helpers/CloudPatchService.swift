@@ -200,7 +200,8 @@ public final class CloudPatchService {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    completion(false, "Patch execution failed: \(error.localizedDescription)")
+                    let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
+                    completion(false, "Patch execution failed: \(errMsg)")
                 }
             }
         }.resume()
@@ -222,7 +223,8 @@ public final class CloudPatchService {
                 return
             } catch {
                 DispatchQueue.main.async {
-                    completion(false, "Revert failed: \(error.localizedDescription)")
+                    let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
+                    completion(false, "Revert failed: \(errMsg)")
                 }
                 return
             }

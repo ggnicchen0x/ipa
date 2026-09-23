@@ -224,9 +224,9 @@
 "patch.error.replacement_required" = "保存前，请为每个目标路径选择替换文件。";
 "patch.error.keychain" = "无法安全保存或读取已记住的解锁密钥。";
 "patch.error.app_unavailable" = "未安装应用 bundle %@，或无法打开该应用。未更改任何补丁文件。";
-"patch.error.target_occupied" = "目标 %@ 已被另一个补丁项目占用。请先恢复该补丁，再应用此补丁。";
+"patch.error.target_occupied" = "目标文件已被其他已激活的功能修改。请先重置或还原已有修改，再应用此功能。";
 "patch.error.already_applied" = "此补丁已生效。请先重置软件包状态或恢复原始文件，再次应用。";
-"patch.error.restore_targets_changed" = "以下文件在应用补丁后发生更改，恢复前需要确认：\n%@";
+"patch.error.restore_targets_changed" = "游戏文件已在外部被更改，恢复前需要确认。";
 "patch.error.active_delete" = "此补丁仍处于生效状态。删除软件包前，请先恢复原始文件。";
 "patch.error.symlink" = "补丁目标路径不能经过符号链接。";
 "patch.error.apply" = "无法应用补丁。之前的所有写入均已回滚。";

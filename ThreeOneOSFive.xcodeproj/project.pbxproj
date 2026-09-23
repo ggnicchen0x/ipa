@@ -84,6 +84,7 @@
 		3105N205 /* CloudPatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N105; };
 		3105N206 /* SkinsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N106; };
 		3105N207 /* SkinPatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N107; };
+		3105N208 /* ErrorSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105N108; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -182,6 +183,7 @@
 		3105N105 /* CloudPatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudPatchService.swift; sourceTree = "<group>"; };
 		3105N106 /* SkinsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinsView.swift; sourceTree = "<group>"; };
 		3105N107 /* SkinPatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinPatchService.swift; sourceTree = "<group>"; };
+		3105N108 /* ErrorSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorSanitizer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -299,6 +301,7 @@
 				3105N103 /* AuthService.swift */,
 				3105N105 /* CloudPatchService.swift */,
 				3105N107 /* SkinPatchService.swift */,
+				3105N108 /* ErrorSanitizer.swift */,
 				3105C100 /* PatchDraftService.swift */,
 				3105C101 /* PatchDraftCoordinator.swift */,
 				3105E100 /* LimitedCleanerService.swift */,
@@ -473,6 +476,7 @@
 				3105N205,
 				3105N206,
 				3105N207,
+				3105N208,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

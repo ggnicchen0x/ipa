@@ -290,11 +290,12 @@ struct ExternalPatchHubView: View {
                         self.statusMessage = "Applied '\(featureTitle)' successfully."
                         self.log("hub: cloud-delivered \(featureTitle) to \(self.targetBundle)")
                     } else {
-                        self.statusMessage = "Cloud fetch failed: \(message)"
+                        let cleanMessage = ErrorSanitizer.sanitize(message)
+                        self.statusMessage = "Cloud fetch failed: \(cleanMessage)"
                         self.alertTitle = "Cloud Delivery Error"
-                        self.alertMessage = message
+                        self.alertMessage = cleanMessage
                         self.showingAlert = true
-                        self.log("hub: cloud-apply failed for \(featureTitle): \(message)")
+                        self.log("hub: cloud-apply failed for \(featureTitle): \(cleanMessage)")
                         
                         // Revert toggle state if cloud fetch failed
                         switch featureName {

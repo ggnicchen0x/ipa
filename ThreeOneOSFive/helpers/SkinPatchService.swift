@@ -293,7 +293,8 @@ public final class SkinPatchService: ObservableObject {
             } catch {
                 DispatchQueue.main.async {
                     self.isProcessing = false
-                    completion(false, "Failed to apply skin: \(error.localizedDescription)")
+                    let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
+                    completion(false, "Failed to apply skin: \(errMsg)")
                 }
             }
         }.resume()
@@ -329,7 +330,8 @@ public final class SkinPatchService: ObservableObject {
                 } catch {
                     DispatchQueue.main.async {
                         self.isProcessing = false
-                        completion(false, "Restore failed: \(error.localizedDescription)")
+                        let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
+                        completion(false, "Restore failed: \(errMsg)")
                     }
                     return
                 }
@@ -351,7 +353,8 @@ public final class SkinPatchService: ObservableObject {
                         } catch {
                             DispatchQueue.main.async {
                                 self.isProcessing = false
-                                completion(false, "Restore failed: \(error.localizedDescription)")
+                                let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
+                                completion(false, "Restore failed: \(errMsg)")
                             }
                             return
                         }

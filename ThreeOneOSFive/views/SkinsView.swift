@@ -53,14 +53,14 @@ struct SkinsView: View {
             skinService.removeSkin(skin: skin, targetBundle: targetBundle) { success, message in
                 processingSkinID = nil
                 alertTitle = success ? "Skin Removed" : "Error Removing Skin"
-                alertMessage = message
+                alertMessage = ErrorSanitizer.sanitize(message)
                 showingAlert = true
             }
         } else {
             skinService.applySkin(skin: skin, targetBundle: targetBundle) { success, message in
                 processingSkinID = nil
                 alertTitle = success ? "Skin Applied" : "Error Applying Skin"
-                alertMessage = message
+                alertMessage = ErrorSanitizer.sanitize(message)
                 showingAlert = true
             }
         }
