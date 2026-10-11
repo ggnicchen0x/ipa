@@ -71,10 +71,6 @@ public final class CloudPatchService {
             guard let self = self else { return }
             
             if let error = error {
-                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
-                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
-                    return
-                }
                 DispatchQueue.main.async {
                     completion(false, "Cloud fetch failed: \(error.localizedDescription)")
                 }
@@ -82,10 +78,6 @@ public final class CloudPatchService {
             }
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
-                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
-                    return
-                }
                 DispatchQueue.main.async {
                     completion(false, "Invalid server response.")
                 }
@@ -136,12 +128,6 @@ public final class CloudPatchService {
                     return
                 }
                 
-                // If server doesn't have the file or errored, try local fallback
-                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
-                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
-                    return
-                }
-                
                 var errorMessage = "Server rejected patch delivery (HTTP \(httpResponse.statusCode))."
                 if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let detail = json["detail"] as? String {
@@ -154,10 +140,6 @@ public final class CloudPatchService {
             }
             
             guard let patchData = data, !patchData.isEmpty else {
-                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
-                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
-                    return
-                }
                 DispatchQueue.main.async {
                     completion(false, "Received empty patch payload from server.")
                 }
@@ -236,47 +218,6 @@ public final class CloudPatchService {
                 completion(false, "Patch execution failed: \(errMsg)")
             }
         }
-    }
-    
-    private func loadLocalPatchData(featureKey: String) -> Data? {
-        let filename: String
-        switch featureKey {
-        case "avatar_rooms", "avatar_p", "aim_drag_rooms":
-            filename = "Avatar DragP.3105"
-        case "avatar", "avatar_cs", "aim_drag", "aim_drag_cs":
-            filename = "Avatar Drag.3105"
-        case "hologram", "visuals":
-            filename = "Hologram.3105"
-        case "magic", "magic_bullet":
-            filename = "Magic.3105"
-        case "aimbody", "body_drag":
-            filename = "Aimbody.3105"
-        case "144", "fps_144":
-            filename = "144 FPS.3105"
-        default:
-            filename = "\(featureKey).3105"
-        }
-        
-        let ext = "3105"
-        let nameWithoutExt = filename.replacingOccurrences(of: ".3105", with: "")
-        
-        if let url = Bundle.main.url(forResource: nameWithoutExt, withExtension: ext) {
-            if let data = try? Data(contentsOf: url) { return data }
-        }
-        if let url = Bundle.main.url(forResource: nameWithoutExt, withExtension: ext, subdirectory: "skins") {
-            if let data = try? Data(contentsOf: url) { return data }
-        }
-        if let url = Bundle.main.url(forResource: nameWithoutExt, withExtension: ext, subdirectory: "patches") {
-            if let data = try? Data(contentsOf: url) { return data }
-        }
-        let bundlePath = Bundle.main.bundlePath
-        let directSkins = URL(fileURLWithPath: bundlePath).appendingPathComponent("skins").appendingPathComponent(filename)
-        if let data = try? Data(contentsOf: directSkins) { return data }
-        let directPatches = URL(fileURLWithPath: bundlePath).appendingPathComponent("patches").appendingPathComponent(filename)
-        if let data = try? Data(contentsOf: directPatches) { return data }
-        let rootUrl = URL(fileURLWithPath: bundlePath).appendingPathComponent(filename)
-        if let data = try? Data(contentsOf: rootUrl) { return data }
-        return nil
     }
     
     public func revertPatch(featureKey: String, targetBundle: String, completion: @escaping (Bool, String) -> Void) {
