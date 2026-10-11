@@ -23,6 +23,12 @@ public final class CloudPatchService {
         completion: @escaping (Bool, String) -> Void
     ) {
         let auth = AuthService.shared
+        if AntiDetection.isDeviceTampered() {
+            auth.logout()
+            completion(false, "Security violation: Unauthorized hooking or debugger detected.")
+            return
+        }
+        
         guard auth.isAuthenticated else {
             completion(false, "Authentication required. Please authenticate device first.")
             return

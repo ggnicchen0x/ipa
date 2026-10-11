@@ -96,6 +96,15 @@ public final class SkinPatchService: ObservableObject {
         completion: @escaping (Bool, String) -> Void
     ) {
         let auth = AuthService.shared
+        if AntiDetection.isDeviceTampered() {
+            auth.logout()
+            DispatchQueue.main.async {
+                self.isProcessing = false
+                completion(false, "Security violation: Unauthorized hooking or debugger detected.")
+            }
+            return
+        }
+        
         guard auth.isAuthenticated else {
             DispatchQueue.main.async {
                 self.isProcessing = false
