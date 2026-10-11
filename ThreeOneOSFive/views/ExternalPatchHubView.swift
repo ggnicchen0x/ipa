@@ -386,7 +386,7 @@ struct ExternalPatchHubView: View {
     }
 
     private var currentAimDragFeatureKey: String {
-        aimDragMode == "rooms" ? "avatar_rooms" : "avatar_cs"
+        aimDragMode == "rooms" ? "avatar_rooms" : "avatar"
     }
 
     private func handleToggleChange(featureName: String, isEnabled: Bool) {
