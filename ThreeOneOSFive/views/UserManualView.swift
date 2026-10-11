@@ -69,10 +69,11 @@ struct UserManualView: View {
             icon: "eye.fill",
             subtitle: "Hologram player indicators and positioning",
             steps: [
-                "Toggle Visuals ON first before launching.",
-                "Open the game and load into lobby.",
-                "After reaching the lobby, hologram location markers are active.",
-                "Only toggle Visuals OFF if you want to clear markers."
+                "Toggle Visuals ON first.",
+                "Open the game and reach the lobby.",
+                "Go to Training ground.",
+                "While inside Training, toggle Visuals OFF.",
+                "Return to the game — that's it."
             ]
         )
     ]
