@@ -40,6 +40,16 @@ enum AppTheme {
     static let textSecondary = Color.white.opacity(0.6)
     static let textTertiary = Color.white.opacity(0.35)
 
+    // Surface Aliases
+    static let bgBase = pageBackground
+    static let bgCard = cardBackground
+    static let bgElevated = cardBackgroundElevated
+    static let borderSubtle = cardBorder
+    static let borderFocused = cardBorderActive
+    static let textMuted = textTertiary
+    static let accentMuted = accent.opacity(0.15)
+    static let gradientPurple = accentGradient
+
     // Spacing
     static let pageInset: CGFloat = 16
     static let cardCornerRadius: CGFloat = 16
@@ -72,6 +82,7 @@ enum AppAnimation {
     static let microDuration: Double = 0.15
 
     static let smooth: Animation = .spring(response: 0.5, dampingFraction: 0.82)
+    static let springStandard: Animation = .spring(response: 0.5, dampingFraction: 0.82)
     static let quick: Animation = .spring(response: 0.3, dampingFraction: 0.85)
     static let micro: Animation = .easeOut(duration: 0.15)
     static let expand: Animation = .spring(response: 0.45, dampingFraction: 0.78)
