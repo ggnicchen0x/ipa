@@ -21,12 +21,12 @@ struct OnboardingView: View {
 
     private var language: AppLanguage { AppLanguage(rawValue: languageCode) ?? .english }
     private var motionAnimation: Animation? {
-        reduceMotion ? nil : .easeInOut(duration: 0.24)
+        reduceMotion ? nil : AppAnimation.springStandard
     }
 
     var body: some View {
         ZStack {
-            AppTheme.pageBackground
+            AppTheme.bgBase
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -45,7 +45,7 @@ struct OnboardingView: View {
             HStack(spacing: 6) {
                 ForEach(OnboardingStep.allCases, id: \.rawValue) { s in
                     Capsule()
-                        .fill(s.rawValue <= step.rawValue ? AppTheme.accent : Color.secondary.opacity(0.22))
+                        .fill(s.rawValue <= step.rawValue ? AppTheme.accent : AppTheme.borderSubtle)
                         .frame(height: 4)
                         .frame(maxWidth: s == step ? 28 : 18)
                         .animation(motionAnimation, value: step)
@@ -57,13 +57,13 @@ struct OnboardingView: View {
 
             Text(language.text("onboarding.step", "\(step.rawValue + 1)", "\(OnboardingStep.allCases.count)"))
                 .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.textSecondary)
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
         .padding(.top, 16)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
-        .background(AppTheme.pageBackground)
+        .background(AppTheme.bgBase)
     }
 
     @ViewBuilder
@@ -113,11 +113,12 @@ struct OnboardingView: View {
             VStack(spacing: 10) {
                 Text(language.text("onboarding.welcome_title"))
                     .font(.title2.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(language.text("onboarding.welcome_message"))
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -130,8 +131,12 @@ struct OnboardingView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(
-                    Color(uiColor: .secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    AppTheme.bgCard,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.borderSubtle, lineWidth: 1)
                 )
         }
         .frame(maxWidth: .infinity, alignment: .top)
@@ -144,25 +149,26 @@ struct OnboardingView: View {
             VStack(spacing: 8) {
                 Text(language.text("onboarding.versions_title"))
                     .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(language.text("onboarding.versions_subtitle"))
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                versionRow(icon: "checkmark.circle.fill", title: "iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range, color: .green)
-                versionRow(icon: "checkmark.circle.fill", title: "iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range, color: .green)
-                versionRow(icon: "checkmark.circle.fill", title: "iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range, color: .green)
+                versionRow(icon: "checkmark.circle.fill", title: "iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range, color: AppTheme.accent)
+                versionRow(icon: "checkmark.circle.fill", title: "iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range, color: AppTheme.accent)
+                versionRow(icon: "checkmark.circle.fill", title: "iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range, color: AppTheme.accent)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                        Text("iOS 27.0").font(.subheadline.weight(.semibold))
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.accent)
+                        Text("iOS 27.0").font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.textPrimary)
                         Spacer()
-                        Text(language.text("onboarding.beta")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(language.text("onboarding.beta")).font(.caption.weight(.semibold)).foregroundStyle(AppTheme.textMuted)
                     }
                     ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { v in
                         let betaLabel = language.text("onboarding.developer_beta", "\(v.beta)")
@@ -183,20 +189,24 @@ struct OnboardingView: View {
                             }
                         }
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.textSecondary)
                         .padding(.leading, 24)
                     }
                 }
                 .padding(12)
                 .background(
-                    Color(uiColor: .secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    AppTheme.bgCard,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.borderSubtle, lineWidth: 1)
                 )
             }
 
             Text(language.text("onboarding.versions_footer", AppInfo.osVersion, AppInfo.osBuild))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.textMuted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -205,10 +215,10 @@ struct OnboardingView: View {
 
     private func featureIcon(systemName: String, color: Color) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.accentMuted)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(color.opacity(0.3), lineWidth: 1)
                 )
             Image(systemName: systemName)
@@ -223,11 +233,11 @@ struct OnboardingView: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {
                 Image(systemName: icon).foregroundStyle(color)
-                Text(title).fontWeight(.semibold)
+                Text(title).fontWeight(.semibold).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 Text(value)
                     .font(.subheadline.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.textSecondary)
             }
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 10) {
@@ -235,17 +245,21 @@ struct OnboardingView: View {
                         .foregroundStyle(color)
                     Text(title)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(AppTheme.textPrimary)
                 }
                 Text(value)
                     .font(.subheadline.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.textSecondary)
                     .padding(.leading, 26)
             }
         }
         .font(.subheadline)
         .padding(12)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(AppTheme.bgCard, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.borderSubtle, lineWidth: 1)
+        )
     }
 
     private var controls: some View {
@@ -264,9 +278,9 @@ struct OnboardingView: View {
         .padding(.top, 12)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity)
-        .background(.bar)
+        .background(AppTheme.bgBase)
         .overlay(alignment: .top) {
-            Divider()
+            Divider().background(AppTheme.borderSubtle)
         }
     }
 

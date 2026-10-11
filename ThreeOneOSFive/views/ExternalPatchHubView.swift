@@ -13,6 +13,7 @@ struct ExternalModFeature: Identifiable {
 
 struct ExternalPatchHubView: View {
     @Environment(\.appLanguage) private var language
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var patchStore: PatchProjectStore
     
@@ -32,6 +33,7 @@ struct ExternalPatchHubView: View {
     @State private var showingAlert: Bool = false
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
+    @State private var appeared = false
 
     private let supportedBundles = [
         ("Free Fire MAX", "com.dts.freefiremax"),
@@ -40,240 +42,25 @@ struct ExternalPatchHubView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // Section 1: Game Configuration
-                Section {
-                    Picker("Target Version", selection: $targetBundle) {
-                        ForEach(supportedBundles, id: \.1) { item in
-                            Text(item.0).tag(item.1)
-                        }
-                    }
-                    .pickerStyle(.menu)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Section 1: Game Configuration Card
+                    gameConfigSection
+                        .staggeredAppearance(index: 0)
 
-                    HStack {
-                        Label {
-                            Text("Target Bundle ID")
-                        } icon: {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(.gray)
-                        }
-                        Spacer()
-                        Text(targetBundle)
-                            .font(.system(.footnote, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
+                    // Section 2: External Toggles
+                    externalTogglesSection
+                        .staggeredAppearance(index: 1)
 
-                    HStack {
-                        Label {
-                            Text("Kernel Status")
-                        } icon: {
-                            Image(systemName: "shield.lefthalf.filled")
-                                .foregroundStyle(.gray)
-                        }
-                        Spacer()
-                        Text(appState.exploitStatus.isSuccess ? "Active & Rooted" : "Active & Rooted")
-                            .font(.footnote)
-                            .foregroundStyle(.white)
-                    }
-                } header: {
-                    Text("GAME CONFIGURATION")
-                } footer: {
-                    Text("Select your installed game version before toggling features.")
+                    // Section 3: Guest Account Manager
+                    guestManagerSection
+                        .staggeredAppearance(index: 2)
                 }
-
-                // Section 2: External Toggles
-                Section {
-                    // 1. Aim Drag
-                    Toggle(isOn: $aimStableEnabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Aim Drag")
-                                        .fontWeight(.medium)
-                                    Text("Enhance your Aim Target")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "avatar" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "scope", tint: .gray)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: aimStableEnabled) { isEnabled in
-                        handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
-                    }
-
-                    // 2. 144 FPS Unlock
-                    Toggle(isOn: $fps144Enabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("144 FPS Unlock")
-                                        .fontWeight(.medium)
-                                    Text("Unlocks ultra-smooth 144Hz gameplay")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "144" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "speedometer", tint: .gray)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: fps144Enabled) { isEnabled in
-                        handleToggleChange(featureName: "144", isEnabled: isEnabled)
-                    }
-
-                    // 3. Magic Bullet
-                    Toggle(isOn: $magicBulletEnabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Magic Bullet")
-                                        .fontWeight(.medium)
-                                    Text("Connect Every Single Bullets")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "magic" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "flame.fill", tint: .gray)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: magicBulletEnabled) { isEnabled in
-                        handleToggleChange(featureName: "magic", isEnabled: isEnabled)
-                    }
-
-                    // 4. Aim Body
-                    Toggle(isOn: $bodyDragEnabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Aim Body")
-                                        .fontWeight(.medium)
-                                    Text("Only Red shots/high accuracy")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "aimbody" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "bolt.fill", tint: .gray)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: bodyDragEnabled) { isEnabled in
-                        handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
-                    }
-
-                    // 5. Clean Cache Asset
-                    Toggle(isOn: $cleanCacheAssetEnabled) {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Clean Cache Asset")
-                                        .fontWeight(.medium)
-                                    Text("Cleans and refreshes game cache")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if processingFeature == "cleancache" {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                }
-                            }
-                        } icon: {
-                            AppRowIcon(systemName: "arrow.triangle.2.circlepath", tint: .gray)
-                        }
-                    }
-                    .disabled(processingFeature != nil)
-                    .onChange(of: cleanCacheAssetEnabled) { isEnabled in
-                        handleCleanCacheAsset(isEnabled: isEnabled)
-                    }
-                } header: {
-                    Text("EXTERNAL TOGGLES")
-                }
-
-                // Section 3: Guest Account Manager
-                Section {
-                    // Item 1: Dynamic Guest Reset / Revert Reset
-                    Button {
-                        if isGuestResetInjected {
-                            removeResetGuestConfig()
-                        } else {
-                            resetGuestAccount()
-                        }
-                    } label: {
-                        HStack {
-                            AppRowIcon(
-                                systemName: isGuestResetInjected ? "arrow.uturn.backward.circle.fill" : "person.crop.circle.badge.minus",
-                                tint: .gray
-                            )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(isGuestResetInjected ? "Revert Reset" : "Guest Reset")
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(isGuestResetInjected ? Color.orange : Color.primary)
-                                Text(isGuestResetInjected ? "Remove config to finish guest wipe & play" : "Wipes guest session on next game launch")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if isResettingGuest || isRemovingResetConfig {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(isResettingGuest || isRemovingResetConfig || isRestoringGame)
-
-                    // Item 2: Reset All Changes (Restore original & turn off all active toggles/skins)
-                    Button(role: .destructive) {
-                        restoreAllDefaults()
-                    } label: {
-                        HStack {
-                            AppRowIcon(systemName: "arrow.counterclockwise.circle.fill", tint: .gray)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Reset All Changes")
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.red)
-                                Text("Deactivates all mods & restores original game files")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if isRestoringGame {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(isRestoringGame || isResettingGuest || isRemovingResetConfig)
-                } header: {
-                    Text("GUEST ACCOUNT MANAGER")
-                } footer: {
-                    Text("Use Guest Reset to wipe guest data. Use Reset All Changes to restore all original game files and disable active mods.")
-                }
+                .padding(.horizontal, AppTheme.pageInset)
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
+            .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("Menu")
             .alert(alertTitle, isPresented: $showingAlert) {
                 Button("OK", role: .cancel) { }
@@ -282,6 +69,302 @@ struct ExternalPatchHubView: View {
             }
         }
     }
+
+    // MARK: - Game Configuration
+
+    private var gameConfigSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            PremiumSectionHeader(title: "GAME CONFIGURATION", icon: "gamecontroller.fill")
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.top, AppTheme.cardPadding)
+                .padding(.bottom, 14)
+
+            // Game Picker
+            HStack {
+                Label {
+                    Text("Select Game")
+                        .font(.system(size: 15, weight: .medium))
+                } icon: {
+                    Image(systemName: "square.grid.2x2.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppTheme.accent)
+                }
+                Spacer()
+                Picker("", selection: $targetBundle) {
+                    ForEach(supportedBundles, id: \.1) { item in
+                        Text(item.0).tag(item.1)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(AppTheme.accent)
+            }
+            .padding(.horizontal, AppTheme.cardPadding)
+            .padding(.vertical, 12)
+
+            Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+            // Kernel Status
+            HStack {
+                Label {
+                    Text("Kernel Status")
+                        .font(.system(size: 15, weight: .medium))
+                } icon: {
+                    Image(systemName: "shield.lefthalf.filled")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppTheme.accent)
+                }
+                Spacer()
+                StatusBadge(
+                    text: "Active & Rooted",
+                    color: .green,
+                    isActive: true
+                )
+            }
+            .padding(.horizontal, AppTheme.cardPadding)
+            .padding(.vertical, 12)
+
+            // Footer
+            Text("Select your installed game version before toggling features.")
+                .font(.system(size: 12))
+                .foregroundStyle(AppTheme.textTertiary)
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.bottom, AppTheme.cardPadding)
+                .padding(.top, 4)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                        .stroke(AppTheme.cardBorder, lineWidth: 0.5)
+                )
+        )
+    }
+
+    // MARK: - External Toggles
+
+    private var externalTogglesSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PremiumSectionHeader(title: "EXTERNAL TOGGLES", icon: "slider.horizontal.3")
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.top, AppTheme.cardPadding)
+                .padding(.bottom, 10)
+
+            VStack(spacing: 0) {
+                // 1. Aim Drag
+                PremiumToggleRow(
+                    icon: "scope",
+                    title: "Aim Drag",
+                    subtitle: "Enhance your Aim Target",
+                    isOn: $aimStableEnabled,
+                    isProcessing: processingFeature == "avatar",
+                    isDisabled: processingFeature != nil && processingFeature != "avatar"
+                )
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 10)
+                .onChange(of: aimStableEnabled) { isEnabled in
+                    handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
+                }
+
+                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+                // 2. Aim Body
+                PremiumToggleRow(
+                    icon: "bolt.fill",
+                    title: "Aim Body",
+                    subtitle: "Only Red shots/high accuracy",
+                    isOn: $bodyDragEnabled,
+                    isProcessing: processingFeature == "aimbody",
+                    isDisabled: processingFeature != nil && processingFeature != "aimbody"
+                )
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 10)
+                .onChange(of: bodyDragEnabled) { isEnabled in
+                    handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
+                }
+
+                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+                // 3. Magic Bullet
+                PremiumToggleRow(
+                    icon: "flame.fill",
+                    title: "Magic Bullet",
+                    subtitle: "Connect Every Single Bullets",
+                    isOn: $magicBulletEnabled,
+                    isProcessing: processingFeature == "magic",
+                    isDisabled: processingFeature != nil && processingFeature != "magic"
+                )
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 10)
+                .onChange(of: magicBulletEnabled) { isEnabled in
+                    handleToggleChange(featureName: "magic", isEnabled: isEnabled)
+                }
+
+                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+                // 4. 144 FPS Unlock
+                PremiumToggleRow(
+                    icon: "speedometer",
+                    title: "144 FPS Unlock",
+                    subtitle: "Unlocks ultra-smooth 144Hz gameplay",
+                    isOn: $fps144Enabled,
+                    isProcessing: processingFeature == "144",
+                    isDisabled: processingFeature != nil && processingFeature != "144"
+                )
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 10)
+                .onChange(of: fps144Enabled) { isEnabled in
+                    handleToggleChange(featureName: "144", isEnabled: isEnabled)
+                }
+
+                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+                // 5. Clean Cache Asset
+                PremiumToggleRow(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "Clean Cache Asset",
+                    subtitle: "Cleans and refreshes game cache",
+                    isOn: $cleanCacheAssetEnabled,
+                    isProcessing: processingFeature == "cleancache",
+                    isDisabled: processingFeature != nil && processingFeature != "cleancache"
+                )
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 10)
+                .onChange(of: cleanCacheAssetEnabled) { isEnabled in
+                    handleCleanCacheAsset(isEnabled: isEnabled)
+                }
+            }
+
+            // Bottom padding
+            Spacer().frame(height: 6)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                        .stroke(AppTheme.cardBorder, lineWidth: 0.5)
+                )
+        )
+    }
+
+    // MARK: - Guest Account Manager
+
+    private var guestManagerSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PremiumSectionHeader(title: "ACCOUNT TOOLS", icon: "person.badge.key.fill")
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.top, AppTheme.cardPadding)
+                .padding(.bottom, 10)
+
+            // Guest Reset / Revert
+            Button {
+                if isGuestResetInjected {
+                    removeResetGuestConfig()
+                } else {
+                    resetGuestAccount()
+                }
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.iconCornerRadius, style: .continuous)
+                            .fill(isGuestResetInjected ? Color.orange.opacity(0.12) : AppTheme.accent.opacity(0.12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.iconCornerRadius, style: .continuous)
+                                    .stroke(isGuestResetInjected ? Color.orange.opacity(0.2) : AppTheme.accent.opacity(0.15), lineWidth: 0.5)
+                            )
+                        Image(systemName: isGuestResetInjected ? "arrow.uturn.backward.circle.fill" : "person.crop.circle.badge.minus")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(isGuestResetInjected ? .orange : AppTheme.accent)
+                    }
+                    .frame(width: 32, height: 32)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(isGuestResetInjected ? "Revert Reset" : "Guest Reset")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(isGuestResetInjected ? Color.orange : Color.primary)
+                        Text(isGuestResetInjected ? "Remove config to finish guest wipe & play" : "Wipes guest session on next game launch")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer()
+                    if isResettingGuest || isRemovingResetConfig {
+                        ProgressView()
+                            .scaleEffect(0.85)
+                            .tint(AppTheme.accent)
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                }
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
+            .disabled(isResettingGuest || isRemovingResetConfig || isRestoringGame)
+
+            Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+            // Reset All Changes
+            Button {
+                restoreAllDefaults()
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.iconCornerRadius, style: .continuous)
+                            .fill(Color.red.opacity(0.12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.iconCornerRadius, style: .continuous)
+                                    .stroke(Color.red.opacity(0.15), lineWidth: 0.5)
+                            )
+                        Image(systemName: "arrow.counterclockwise.circle.fill")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.red.opacity(0.85))
+                    }
+                    .frame(width: 32, height: 32)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reset All Changes")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.red)
+                        Text("Deactivates all mods & restores original game files")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer()
+                    if isRestoringGame {
+                        ProgressView()
+                            .scaleEffect(0.85)
+                            .tint(.red)
+                    }
+                }
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
+            .disabled(isRestoringGame || isResettingGuest || isRemovingResetConfig)
+
+            // Footer
+            Text("Use Guest Reset to wipe guest data. Use Reset All Changes to restore all original game files and disable active mods.")
+                .font(.system(size: 12))
+                .foregroundStyle(AppTheme.textTertiary)
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.bottom, AppTheme.cardPadding)
+                .padding(.top, 8)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                        .stroke(AppTheme.cardBorder, lineWidth: 0.5)
+                )
+        )
+    }
+
+    // MARK: - Business Logic (Preserved)
 
     private func handleCleanCacheAsset(isEnabled: Bool) {
         if isEnabled {
@@ -349,7 +432,6 @@ struct ExternalPatchHubView: View {
                         self.showingAlert = true
                         self.log("hub: cloud-apply failed for \(featureTitle): \(cleanMessage)")
                         
-                        // Revert toggle state if cloud fetch failed
                         switch featureName {
                         case "avatar": self.aimStableEnabled = false
                         case "144": self.fps144Enabled = false
@@ -394,14 +476,12 @@ struct ExternalPatchHubView: View {
                 }
             }
 
-            // Also remove any active applied skins
             for skin in SkinPatchService.shared.skins {
                 if SkinPatchService.shared.isApplied(skinID: skin.id) {
                     SkinPatchService.shared.removeSkin(skin: skin, targetBundle: targetBundle) { _, _ in }
                 }
             }
 
-            // If guest reset config was injected, clean it up
             if isGuestResetInjected {
                 cleanGuestConfigFiles()
             }

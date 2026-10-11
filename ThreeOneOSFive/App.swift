@@ -24,6 +24,12 @@ struct ThreeOneOSFiveApp: App {
         UIWindow.appearance().overrideUserInterfaceStyle = .dark
         UINavigationBar.appearance().overrideUserInterfaceStyle = .dark
         UITabBar.appearance().overrideUserInterfaceStyle = .dark
+
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.backgroundColor = UIColor(red: 0.035, green: 0.035, blue: 0.043, alpha: 1.0)
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
     }
 
     private var language: AppLanguage {

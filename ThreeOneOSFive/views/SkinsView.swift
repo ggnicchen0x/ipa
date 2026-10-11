@@ -8,7 +8,6 @@ struct SkinsView: View {
     
     @AppStorage("external_hub.target_bundle") private var targetBundle: String = "com.dts.freefiremax"
     
-    @State private var statusMessage: String = "Ready"
     @State private var showingAlert: Bool = false
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
@@ -16,27 +15,55 @@ struct SkinsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // Skins Catalog Section
-                Section {
-                    ForEach(skinService.skins) { skin in
-                        SkinRowView(
-                            skin: skin,
-                            isApplied: skinService.isApplied(skinID: skin.id),
-                            isProcessing: processingSkinID == skin.id,
-                            isAnyProcessing: processingSkinID != nil || skinService.isProcessing,
-                            onAction: {
-                                handleSkinAction(skin: skin)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Header Status Card
+                    headerSection
+                        .staggeredAppearance(index: 0)
+
+                    // Skins Cards List
+                    if skinService.skins.isEmpty {
+                        emptyStateSection
+                            .staggeredAppearance(index: 1)
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(Array(skinService.skins.enumerated()), id: \.element.id) { index, skin in
+                                SkinRowView(
+                                    skin: skin,
+                                    isApplied: skinService.isApplied(skinID: skin.id),
+                                    isProcessing: processingSkinID == skin.id,
+                                    isAnyProcessing: processingSkinID != nil || skinService.isProcessing,
+                                    onAction: {
+                                        handleSkinAction(skin: skin)
+                                    }
+                                )
+                                .staggeredAppearance(index: index + 1)
                             }
-                        )
+                        }
                     }
-                } header: {
-                    Text("Available Mod Skins")
-                } footer: {
-                    Text("Make sure the character or outfit is fully downloaded inside Free Fire before applying.")
+
+                    // Notice / Instructions Footer
+                    footerNotice
+                        .staggeredAppearance(index: skinService.skins.count + 2)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+            }
+            .background(AppTheme.bgBase.ignoresSafeArea())
+            .navigationTitle("Skins")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "shippingbox.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(AppTheme.accent)
+                        Text("MOD SKINS")
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
                 }
             }
-            .navigationTitle("Skins")
             .alert(alertTitle, isPresented: $showingAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -45,20 +72,97 @@ struct SkinsView: View {
         }
     }
 
+    private var headerSection: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(AppTheme.accentMuted)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "tshirt.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(AppTheme.accent)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Asset Modifier")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("Inject custom outfits & textures directly into client cache")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            Spacer()
+
+            StatusBadge(
+                text: "\(skinService.skins.filter { skinService.isApplied(skinID: $0.id) }.count) ACTIVE",
+                style: .active
+            )
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.bgCard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(AppTheme.borderSubtle, lineWidth: 1)
+                )
+        )
+    }
+
+    private var emptyStateSection: some View {
+        EmptyStateView(
+            icon: "shippingbox",
+            title: "No Skins Loaded",
+            message: "Bundle manifests will appear here once loaded by the catalog service."
+        )
+        .padding(.vertical, 32)
+    }
+
+    private var footerNotice: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle")
+                .font(.system(size: 14))
+                .foregroundStyle(AppTheme.accent)
+                .padding(.top, 1)
+
+            Text("Verify that the target character or outfit bundle is fully downloaded inside Free Fire before applying.")
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textMuted)
+                .lineSpacing(2)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AppTheme.bgElevated.opacity(0.5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.borderSubtle, lineWidth: 1)
+                )
+        )
+    }
+
     private func handleSkinAction(skin: SkinItem) {
         let isCurrentlyApplied = skinService.isApplied(skinID: skin.id)
-        processingSkinID = skin.id
+        withAnimation(AppAnimation.springStandard) {
+            processingSkinID = skin.id
+        }
         
         if isCurrentlyApplied {
             skinService.removeSkin(skin: skin, targetBundle: targetBundle) { success, message in
-                processingSkinID = nil
+                withAnimation(AppAnimation.springStandard) {
+                    processingSkinID = nil
+                }
                 alertTitle = success ? "Skin Removed" : "Error Removing Skin"
                 alertMessage = ErrorSanitizer.sanitize(message)
                 showingAlert = true
             }
         } else {
             skinService.applySkin(skin: skin, targetBundle: targetBundle) { success, message in
-                processingSkinID = nil
+                withAnimation(AppAnimation.springStandard) {
+                    processingSkinID = nil
+                }
                 alertTitle = success ? "Skin Applied" : "Error Applying Skin"
                 alertMessage = ErrorSanitizer.sanitize(message)
                 showingAlert = true
@@ -75,80 +179,85 @@ private struct SkinRowView: View {
     let onAction: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            // Left Side: Skin Thumbnail Image (Square 1:1 full-bleed card)
-            SkinThumbnailView(imageName: skin.imageName)
-                .frame(width: 76, height: 76)
-                .background(Color.black.opacity(0.35))
+        VStack(spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                // Left Side: Skin Thumbnail Image
+                SkinThumbnailView(imageName: skin.imageName)
+                    .frame(width: 68, height: 68)
+                    .background(Color.black.opacity(0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(isApplied ? AppTheme.accent.opacity(0.6) : AppTheme.borderSubtle, lineWidth: 1)
+                    )
+
+                // Middle: Name & Description
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(skin.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        
+                        if isApplied {
+                            StatusBadge(text: "APPLIED", style: .active)
+                        }
+                    }
+
+                    Text(skin.description)
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+            }
+
+            // Bottom action button full width inside card
+            Button(action: onAction) {
+                HStack(spacing: 8) {
+                    if isProcessing {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(isApplied ? Color.red : AppTheme.accent)
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: isApplied ? "trash.fill" : "sparkles")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    
+                    Text(isProcessing ? (isApplied ? "Removing..." : "Applying...") : (isApplied ? "Remove Skin" : "Apply Skin"))
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 38)
+                .background(
+                    isApplied
+                        ? Color.red.opacity(0.12)
+                        : AppTheme.accentMuted
+                )
+                .foregroundStyle(isApplied ? Color.red : AppTheme.accent)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(isApplied ? AppTheme.accent.opacity(0.6) : Color.secondary.opacity(0.2), lineWidth: 1)
+                        .stroke(
+                            isApplied ? Color.red.opacity(0.35) : AppTheme.borderFocused,
+                            lineWidth: 1
+                        )
                 )
-
-            // Middle: Name & Description
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(skin.name)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    
-                    if isApplied {
-                        Text("Active")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.accent.opacity(0.18))
-                            .foregroundStyle(AppTheme.accent)
-                            .clipShape(Capsule())
-                    }
-                }
-
-                Text(skin.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                Spacer(minLength: 4)
-
-                // Action Button: Apply / Remove
-                Button(action: onAction) {
-                    HStack(spacing: 6) {
-                        if isProcessing {
-                            ProgressView()
-                                .progressViewStyle(.circular)
-                                .scaleEffect(0.7)
-                        } else {
-                            Image(systemName: isApplied ? "trash.fill" : "arrow.down.circle.fill")
-                                .font(.system(size: 11, weight: .semibold))
-                        }
-                        
-                        Text(isProcessing ? (isApplied ? "Removing..." : "Applying...") : (isApplied ? "Remove" : "Apply"))
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .background(
-                        isApplied
-                            ? Color.red.opacity(0.15)
-                            : AppTheme.accent.opacity(0.18)
-                    )
-                    .foregroundStyle(isApplied ? Color.red : AppTheme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(
-                                isApplied ? Color.red.opacity(0.35) : AppTheme.accent.opacity(0.35),
-                                lineWidth: 1
-                            )
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isAnyProcessing)
             }
+            .buttonStyle(.plain)
+            .disabled(isAnyProcessing)
         }
-        .padding(.vertical, 6)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.bgCard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(isApplied ? AppTheme.borderFocused : AppTheme.borderSubtle, lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -167,9 +276,9 @@ private struct SkinThumbnailView: View {
                     .aspectRatio(contentMode: .fill)
             } else {
                 ZStack {
-                    Color.secondary.opacity(0.15)
+                    AppTheme.bgElevated
                     Image(systemName: "tshirt.fill")
-                        .font(.system(size: 26))
+                        .font(.system(size: 24))
                         .foregroundStyle(AppTheme.accent)
                 }
             }

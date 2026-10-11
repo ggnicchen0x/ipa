@@ -11,8 +11,7 @@ public struct ReleaseNotesModalView: View {
     
     public var body: some View {
         ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.07)
-                .ignoresSafeArea()
+            AppTheme.bgBase.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Top Header Badge
@@ -20,44 +19,44 @@ public struct ReleaseNotesModalView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(Color(red: 0.65, green: 0.45, blue: 1.0))
+                            .foregroundColor(AppTheme.accent)
                         
                         Text("NEW UPDATE")
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .tracking(1.5)
-                            .foregroundColor(Color(red: 0.65, green: 0.45, blue: 1.0))
+                            .foregroundColor(AppTheme.accent)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(red: 0.65, green: 0.45, blue: 1.0).opacity(0.15))
+                            .fill(AppTheme.accentMuted)
                             .overlay(
                                 Capsule()
-                                    .stroke(Color(red: 0.65, green: 0.45, blue: 1.0).opacity(0.35), lineWidth: 1)
+                                    .stroke(AppTheme.borderFocused, lineWidth: 1)
                             )
                     )
                     
                     Text(release.packageName)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                     
                     HStack(spacing: 8) {
                         Text(release.filename)
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppTheme.textSecondary)
                         
                         Text("•")
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppTheme.textMuted)
                         
                         Text(release.versionTag)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
                             .background(
                                 Capsule()
-                                    .fill(Color.white.opacity(0.12))
+                                    .fill(AppTheme.bgElevated)
                             )
                     }
                 }
@@ -65,7 +64,7 @@ public struct ReleaseNotesModalView: View {
                 .padding(.horizontal, 24)
                 
                 Divider()
-                    .background(Color.white.opacity(0.1))
+                    .background(AppTheme.borderSubtle)
                     .padding(.vertical, 20)
                 
                 // "What's New" Section
@@ -73,19 +72,19 @@ public struct ReleaseNotesModalView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("What's New:")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                         
                         VStack(alignment: .leading, spacing: 12) {
                             ForEach(parseBullets(release.releaseNotes), id: \.self) { bullet in
                                 HStack(alignment: .top, spacing: 10) {
                                     Circle()
-                                        .fill(Color(red: 0.65, green: 0.45, blue: 1.0))
+                                        .fill(AppTheme.accent)
                                         .frame(width: 6, height: 6)
                                         .padding(.top, 7)
                                     
                                     Text(bullet)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(Color(white: 0.88))
+                                        .foregroundColor(AppTheme.textSecondary)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
@@ -93,11 +92,11 @@ public struct ReleaseNotesModalView: View {
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.white.opacity(0.04))
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(AppTheme.bgCard)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(AppTheme.borderSubtle, lineWidth: 1)
                                 )
                         )
                         
@@ -105,11 +104,11 @@ public struct ReleaseNotesModalView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark.shield.fill")
                                 .font(.system(size: 14))
-                                .foregroundColor(.green)
+                                .foregroundColor(AppTheme.accent)
                             
                             Text("Latest patch payload verified & ready in cloud delivery.")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.gray)
+                                .foregroundColor(AppTheme.textMuted)
                         }
                         .padding(.top, 4)
                     }
@@ -133,19 +132,10 @@ public struct ReleaseNotesModalView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.55, green: 0.35, blue: 0.95),
-                                Color(red: 0.45, green: 0.25, blue: 0.85)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .background(AppTheme.gradientPurple)
                     .foregroundColor(.white)
                     .cornerRadius(14)
-                    .shadow(color: Color(red: 0.55, green: 0.35, blue: 0.95).opacity(0.35), radius: 8, x: 0, y: 4)
+                    .shadow(color: AppTheme.accent.opacity(0.35), radius: 8, x: 0, y: 4)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 28)
