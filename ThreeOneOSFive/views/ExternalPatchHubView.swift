@@ -22,7 +22,7 @@ struct ExternalPatchHubView: View {
     @AppStorage("mod.fps_144") private var fps144Enabled: Bool = false
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
     @AppStorage("mod.body_drag") private var bodyDragEnabled: Bool = false
-    @AppStorage("mod.clean_cache_asset") private var cleanCacheAssetEnabled: Bool = false
+    @AppStorage("mod.visuals") private var visualsEnabled: Bool = false
     @AppStorage("guest_reset.injected") private var isGuestResetInjected: Bool = false
 
     @State private var statusMessage: String = "Ready"
@@ -146,7 +146,7 @@ struct ExternalPatchHubView: View {
 
     private var externalTogglesSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PremiumSectionHeader(title: "EXTERNAL TOGGLES", icon: "slider.horizontal.3")
+            PremiumSectionHeader(title: "EXTERNAL FEATURES", icon: "slider.horizontal.3")
                 .padding(.horizontal, AppTheme.cardPadding)
                 .padding(.top, AppTheme.cardPadding)
                 .padding(.bottom, 10)
@@ -203,7 +203,24 @@ struct ExternalPatchHubView: View {
 
                 Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
 
-                // 4. 144 FPS Unlock
+                // 4. Visuals (Hologram Location Exposed)
+                PremiumToggleRow(
+                    icon: "eye.fill",
+                    title: "Visuals",
+                    subtitle: "Hologram for Location Exposed",
+                    isOn: $visualsEnabled,
+                    isProcessing: processingFeature == "hologram",
+                    isDisabled: processingFeature != nil && processingFeature != "hologram"
+                )
+                .padding(.horizontal, AppTheme.cardPadding)
+                .padding(.vertical, 10)
+                .onChange(of: visualsEnabled) { isEnabled in
+                    handleToggleChange(featureName: "hologram", isEnabled: isEnabled)
+                }
+
+                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+
+                // 5. 144 FPS Unlock
                 PremiumToggleRow(
                     icon: "speedometer",
                     title: "144 FPS Unlock",
@@ -216,23 +233,6 @@ struct ExternalPatchHubView: View {
                 .padding(.vertical, 10)
                 .onChange(of: fps144Enabled) { isEnabled in
                     handleToggleChange(featureName: "144", isEnabled: isEnabled)
-                }
-
-                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
-
-                // 5. Clean Cache Asset
-                PremiumToggleRow(
-                    icon: "arrow.triangle.2.circlepath",
-                    title: "Clean Cache Asset",
-                    subtitle: "Cleans and refreshes game cache",
-                    isOn: $cleanCacheAssetEnabled,
-                    isProcessing: processingFeature == "cleancache",
-                    isDisabled: processingFeature != nil && processingFeature != "cleancache"
-                )
-                .padding(.horizontal, AppTheme.cardPadding)
-                .padding(.vertical, 10)
-                .onChange(of: cleanCacheAssetEnabled) { isEnabled in
-                    handleCleanCacheAsset(isEnabled: isEnabled)
                 }
             }
 
@@ -253,7 +253,7 @@ struct ExternalPatchHubView: View {
 
     private var guestManagerSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PremiumSectionHeader(title: "ACCOUNT TOOLS", icon: "person.badge.key.fill")
+            PremiumSectionHeader(title: "SETTINGS", icon: "person.badge.key.fill")
                 .padding(.horizontal, AppTheme.cardPadding)
                 .padding(.top, AppTheme.cardPadding)
                 .padding(.bottom, 10)
@@ -366,41 +366,6 @@ struct ExternalPatchHubView: View {
 
     // MARK: - Business Logic (Preserved)
 
-    private func handleCleanCacheAsset(isEnabled: Bool) {
-        if isEnabled {
-            processingFeature = "cleancache"
-            CloudPatchService.shared.clearCache()
-            
-            Task {
-                var cleaned = 0
-                if let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) {
-                    let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
-                    let targetDirs = [
-                        containerURL.appendingPathComponent("Library/Caches", isDirectory: true),
-                        containerURL.appendingPathComponent("tmp", isDirectory: true)
-                    ]
-                    let fm = FileManager.default
-                    for dir in targetDirs {
-                        if let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
-                            for item in items {
-                                try? fm.removeItem(at: item)
-                                cleaned += 1
-                            }
-                        }
-                    }
-                }
-                
-                await MainActor.run {
-                    self.processingFeature = nil
-                    self.statusMessage = "Cleaned \(cleaned) cached items."
-                    self.log("hub: clean cache completed (\(cleaned) items)")
-                }
-            }
-        } else {
-            statusMessage = "Ready"
-        }
-    }
-
     private func handleToggleChange(featureName: String, isEnabled: Bool) {
         let featureTitle: String
         switch featureName {
@@ -408,6 +373,7 @@ struct ExternalPatchHubView: View {
         case "144": featureTitle = "144 FPS Unlock"
         case "magic": featureTitle = "Magic Bullet"
         case "aimbody": featureTitle = "Aim Body"
+        case "hologram", "visuals": featureTitle = "Visuals"
         default: featureTitle = featureName.capitalized
         }
         
@@ -437,6 +403,7 @@ struct ExternalPatchHubView: View {
                         case "144": self.fps144Enabled = false
                         case "magic": self.magicBulletEnabled = false
                         case "aimbody": self.bodyDragEnabled = false
+                        case "hologram", "visuals": self.visualsEnabled = false
                         default: break
                         }
                     }
@@ -491,7 +458,7 @@ struct ExternalPatchHubView: View {
                 fps144Enabled = false
                 magicBulletEnabled = false
                 bodyDragEnabled = false
-                cleanCacheAssetEnabled = false
+                visualsEnabled = false
                 isGuestResetInjected = false
                 isRestoringGame = false
                 alertTitle = "Reset All Changes"
