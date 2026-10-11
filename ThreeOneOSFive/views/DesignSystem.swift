@@ -171,6 +171,38 @@ struct PremiumToggleRow: View {
     var isDisabled: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    init(
+        title: String,
+        subtitle: String,
+        icon: String,
+        isOn: Binding<Bool>,
+        isProcessing: Bool = false,
+        isDisabled: Bool = false
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self._isOn = isOn
+        self.isProcessing = isProcessing
+        self.isDisabled = isDisabled
+    }
+
+    init(
+        icon: String,
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>,
+        isProcessing: Bool = false,
+        isDisabled: Bool = false
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self._isOn = isOn
+        self.isProcessing = isProcessing
+        self.isDisabled = isDisabled
+    }
+
     var body: some View {
         Toggle(isOn: $isOn) {
             HStack(spacing: 14) {
@@ -187,7 +219,7 @@ struct PremiumToggleRow: View {
                         .foregroundStyle(isOn ? AppTheme.accent : .secondary)
                 }
                 .frame(width: 32, height: 32)
-                .animation(AppAnimation.respectingMotion(.quick, reduceMotion: reduceMotion), value: isOn)
+                .animation(AppAnimation.respectingMotion(AppAnimation.quick, reduceMotion: reduceMotion), value: isOn)
 
                 // Labels
                 VStack(alignment: .leading, spacing: 2) {
@@ -292,6 +324,34 @@ struct StatusBadge: View {
     let text: String
     var color: Color = AppTheme.accent
     var isActive: Bool = true
+
+    enum BadgeStyle {
+        case active, neutral, warning, error
+    }
+
+    init(text: String, style: BadgeStyle = .active) {
+        self.text = text
+        switch style {
+        case .active:
+            self.color = AppTheme.accent
+            self.isActive = true
+        case .neutral:
+            self.color = Color.gray
+            self.isActive = false
+        case .warning:
+            self.color = Color.orange
+            self.isActive = true
+        case .error:
+            self.color = Color.red
+            self.isActive = true
+        }
+    }
+
+    init(text: String, color: Color = AppTheme.accent, isActive: Bool = true) {
+        self.text = text
+        self.color = color
+        self.isActive = isActive
+    }
 
     var body: some View {
         HStack(spacing: 5) {
