@@ -19,6 +19,7 @@ struct ExternalPatchHubView: View {
     
     @AppStorage("external_hub.target_bundle") private var targetBundle: String = "com.dts.freefiremax"
     @AppStorage("mod.aim_stable") private var aimStableEnabled: Bool = false
+    @AppStorage("mod.aim_drag_mode") private var aimDragMode: String = "cs_rank" // "cs_rank" or "rooms"
     @AppStorage("mod.fps_144") private var fps144Enabled: Bool = false
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
     @AppStorage("mod.body_drag") private var bodyDragEnabled: Bool = false
@@ -27,6 +28,7 @@ struct ExternalPatchHubView: View {
 
     @State private var statusMessage: String = "Ready"
     @State private var processingFeature: String? = nil
+    @State private var showingDragModeSheet: Bool = false
     @State private var isResettingGuest: Bool = false
     @State private var isRemovingResetConfig: Bool = false
     @State private var isRestoringGame: Bool = false
@@ -66,6 +68,9 @@ struct ExternalPatchHubView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
+            }
+            .sheet(isPresented: $showingDragModeSheet) {
+                dragModeSelectionSheet
             }
         }
     }
@@ -152,19 +157,35 @@ struct ExternalPatchHubView: View {
                 .padding(.bottom, 10)
 
             VStack(spacing: 0) {
-                // 1. Aim Drag
+                // 1. Aim Drag (Multi-mode: CS Rank / Rooms)
                 PremiumToggleRow(
                     icon: "scope",
                     title: "Aim Drag",
-                    subtitle: "Enhance your Aim Target",
-                    isOn: $aimStableEnabled,
-                    isProcessing: processingFeature == "avatar",
-                    isDisabled: processingFeature != nil && processingFeature != "avatar"
+                    subtitle: aimStableEnabled
+                        ? (aimDragMode == "rooms" ? "Active: Rooms (Max Drag)" : "Active: CS Rank (Smooth)")
+                        : "Enhance your Aim Target",
+                    isOn: Binding(
+                        get: { aimStableEnabled },
+                        set: { newValue in
+                            if newValue {
+                                // Do not apply immediately — show Drag MODE popup
+                                showingDragModeSheet = true
+                            } else {
+                                aimStableEnabled = false
+                                handleToggleChange(featureName: currentAimDragFeatureKey, isEnabled: false)
+                            }
+                        }
+                    ),
+                    isProcessing: processingFeature == "avatar" || processingFeature == "avatar_cs" || processingFeature == "avatar_rooms",
+                    isDisabled: processingFeature != nil && !["avatar", "avatar_cs", "avatar_rooms"].contains(processingFeature)
                 )
                 .padding(.horizontal, AppTheme.cardPadding)
                 .padding(.vertical, 10)
-                .onChange(of: aimStableEnabled) { isEnabled in
-                    handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if aimStableEnabled {
+                        showingDragModeSheet = true
+                    }
                 }
 
                 Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
@@ -364,12 +385,15 @@ struct ExternalPatchHubView: View {
         )
     }
 
-    // MARK: - Business Logic (Preserved)
+    private var currentAimDragFeatureKey: String {
+        aimDragMode == "rooms" ? "avatar_rooms" : "avatar_cs"
+    }
 
     private func handleToggleChange(featureName: String, isEnabled: Bool) {
         let featureTitle: String
         switch featureName {
-        case "avatar": featureTitle = "Aim Drag"
+        case "avatar", "avatar_cs": featureTitle = "Aim Drag (CS Rank)"
+        case "avatar_rooms", "avatar_p": featureTitle = "Aim Drag (Rooms)"
         case "144": featureTitle = "144 FPS Unlock"
         case "magic": featureTitle = "Magic Bullet"
         case "aimbody": featureTitle = "Aim Body"
@@ -379,7 +403,7 @@ struct ExternalPatchHubView: View {
         
         processingFeature = featureName
         if isEnabled {
-            statusMessage = "Fetching '\(featureTitle)' from cloud..."
+            statusMessage = "Fetching '\(featureTitle)'..."
             
             CloudPatchService.shared.fetchAndApplyPatch(
                 featureKey: featureName,
@@ -392,14 +416,14 @@ struct ExternalPatchHubView: View {
                         self.log("hub: cloud-delivered \(featureTitle) to \(self.targetBundle)")
                     } else {
                         let cleanMessage = ErrorSanitizer.sanitize(message)
-                        self.statusMessage = "Cloud fetch failed: \(cleanMessage)"
-                        self.alertTitle = "Cloud Delivery Error"
+                        self.statusMessage = "Delivery failed: \(cleanMessage)"
+                        self.alertTitle = "Mod Delivery Error"
                         self.alertMessage = cleanMessage
                         self.showingAlert = true
-                        self.log("hub: cloud-apply failed for \(featureTitle): \(cleanMessage)")
+                        self.log("hub: apply failed for \(featureTitle): \(cleanMessage)")
                         
                         switch featureName {
-                        case "avatar": self.aimStableEnabled = false
+                        case "avatar", "avatar_cs", "avatar_rooms", "avatar_p": self.aimStableEnabled = false
                         case "144": self.fps144Enabled = false
                         case "magic": self.magicBulletEnabled = false
                         case "aimbody": self.bodyDragEnabled = false
@@ -574,6 +598,160 @@ struct ExternalPatchHubView: View {
             }
         }
         return removedCount
+    }
+    
+    // MARK: - Drag Mode Selection Pop-up
+    private func selectDragMode(_ mode: String) {
+        showingDragModeSheet = false
+        let previousKey = currentAimDragFeatureKey
+        let isAlreadyEnabled = aimStableEnabled
+        aimDragMode = mode
+        aimStableEnabled = true
+        let newKey = currentAimDragFeatureKey
+        
+        if isAlreadyEnabled && previousKey != newKey {
+            CloudPatchService.shared.revertPatch(featureKey: previousKey, targetBundle: targetBundle) { _, _ in
+                handleToggleChange(featureName: newKey, isEnabled: true)
+            }
+        } else {
+            handleToggleChange(featureName: newKey, isEnabled: true)
+        }
+    }
+
+    private var dragModeSelectionSheet: some View {
+        ZStack {
+            Color(hex: 0x0e0e12).ignoresSafeArea()
+            
+            VStack(spacing: 20) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "scope")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(AppTheme.accent)
+                            Text("Drag MODE")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                        Text("Select your target intensity level for Aim Drag")
+                            .font(.system(size: 12))
+                            .foregroundColor(AppTheme.textSecondary)
+                    }
+                    Spacer()
+                    Button(action: { showingDragModeSheet = false }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color.white.opacity(0.35))
+                    }
+                }
+                .padding(.top, 20)
+                .padding(.horizontal, 20)
+                
+                // Mode Options
+                VStack(spacing: 12) {
+                    // Option 1: CS Rank (Avatar Drag.3105)
+                    dragModeCard(
+                        title: "CS Rank",
+                        subtitle: "Calibrated smooth pull • Avatar Drag.3105",
+                        badge: "Ranked Match",
+                        badgeColor: Color(hex: 0x38bdf8),
+                        icon: "shield.checkered",
+                        isSelected: aimStableEnabled && aimDragMode == "cs_rank"
+                    ) {
+                        selectDragMode("cs_rank")
+                    }
+                    
+                    // Option 2: Rooms (Avatar DragP.3105)
+                    dragModeCard(
+                        title: "Rooms",
+                        subtitle: "Maximum velocity pull • Avatar DragP.3105",
+                        badge: "High Power",
+                        badgeColor: Color(hex: 0xf43f5e),
+                        icon: "flame.fill",
+                        isSelected: aimStableEnabled && aimDragMode == "rooms"
+                    ) {
+                        selectDragMode("rooms")
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+        }
+        .presentationDetents([.height(310)])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func dragModeCard(
+        title: String,
+        subtitle: String,
+        badge: String,
+        badgeColor: Color,
+        icon: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(isSelected ? AppTheme.accent.opacity(0.2) : Color.white.opacity(0.06))
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(isSelected ? AppTheme.accent.opacity(0.4) : Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(isSelected ? AppTheme.accent : .white)
+                }
+                
+                // Info
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                        
+                        Text(badge)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(badgeColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(badgeColor.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                    
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(AppTheme.accent)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.white.opacity(0.3))
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? AppTheme.accent.opacity(0.12) : AppTheme.cardBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(isSelected ? AppTheme.accent.opacity(0.5) : AppTheme.cardBorder, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
     private func log(_ message: String) {

@@ -71,6 +71,10 @@ public final class CloudPatchService {
             guard let self = self else { return }
             
             if let error = error {
+                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
+                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
+                    return
+                }
                 DispatchQueue.main.async {
                     completion(false, "Cloud fetch failed: \(error.localizedDescription)")
                 }
@@ -78,6 +82,10 @@ public final class CloudPatchService {
             }
             
             guard let httpResponse = response as? HTTPURLResponse else {
+                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
+                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
+                    return
+                }
                 DispatchQueue.main.async {
                     completion(false, "Invalid server response.")
                 }
@@ -119,92 +127,156 @@ public final class CloudPatchService {
             }
             
             if httpResponse.statusCode != 200 {
+                if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                    // Key or Session Invalidated
+                    DispatchQueue.main.async {
+                        auth.logout()
+                        completion(false, "Authentication expired. Please re-authenticate.")
+                    }
+                    return
+                }
+                
+                // If server doesn't have the file or errored, try local fallback
+                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
+                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
+                    return
+                }
+                
                 var errorMessage = "Server rejected patch delivery (HTTP \(httpResponse.statusCode))."
                 if let data = data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let detail = json["detail"] as? String {
                     errorMessage = detail
                 }
                 DispatchQueue.main.async {
-                    if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
-                        // Key or Session Invalidated
-                        auth.logout()
-                    }
                     completion(false, errorMessage)
                 }
                 return
             }
             
             guard let patchData = data, !patchData.isEmpty else {
+                if let localData = self.loadLocalPatchData(featureKey: normalizedKey) {
+                    self.applyPatchData(patchData: localData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
+                    return
+                }
                 DispatchQueue.main.async {
                     completion(false, "Received empty patch payload from server.")
                 }
                 return
             }
             
-            // Decode the .3105 package dynamically in memory (supports public & password-protected packages)
-            do {
-                let package: DecodedPatchPackage
-                if let decoded = try? PatchPackageCodec.decode(patchData, password: nil) {
-                    package = decoded
-                } else if let decodedOG = try? PatchPackageCodec.decode(patchData, password: "OG") {
-                    package = decodedOG
-                } else {
-                    package = try PatchPackageCodec.decode(patchData, password: nil)
-                }
-                let project = package.project
-                
-                // Adapt project for target bundle (Free Fire MAX vs TH)
-                var adaptedProject = project
-                adaptedProject.bundleIdentifiers = [targetBundle]
-                
-                var seenDirs = Set<String>()
-                adaptedProject.directories = project.directories
-                    .map { dir in
-                        var d = dir
-                        d.bundleID = targetBundle
-                        return d
-                    }
-                    .filter { seenDirs.insert($0.relativePath).inserted }
-                
-                var seenRules = Set<String>()
-                adaptedProject.rules = project.rules
-                    .map { rule in
-                        var r = rule
-                        r.bundleID = targetBundle
-                        if r.relativePath.contains("Library/Preferences/") {
-                            if targetBundle == "com.dts.freefiremax" {
-                                r.relativePath = "Library/Preferences/com.dts.freefiremax.plist"
-                                r.replacementFilename = "com.dts.freefiremax.plist"
-                            } else if targetBundle == "com.dts.freefireth" {
-                                r.relativePath = "Library/Preferences/com.dts.freefireth.plist"
-                                r.replacementFilename = "com.dts.freefireth.plist"
-                            }
-                        }
-                        return r
-                    }
-                    .filter { seenRules.insert($0.relativePath).inserted }
-                
-                // Revert any existing receipt first to ensure clean application
-                if let existingReceipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
-                    try? DevicePatchService.restore(receipt: existingReceipt, allowChangedTargets: true)
-                }
-                
-                _ = try DevicePatchService.apply(project: adaptedProject)
-                
-                self.cacheLock.lock()
-                self.inMemoryPatchCache[normalizedKey] = adaptedProject
-                self.cacheLock.unlock()
-                
-                DispatchQueue.main.async {
-                    completion(true, "Cloud patch '\(project.name)' verified and applied successfully.")
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
-                    completion(false, "Patch execution failed: \(errMsg)")
-                }
-            }
+            self.applyPatchData(patchData: patchData, targetBundle: targetBundle, normalizedKey: normalizedKey, completion: completion)
         }.resume()
+    }
+    
+    private func applyPatchData(
+        patchData: Data,
+        targetBundle: String,
+        normalizedKey: String,
+        completion: @escaping (Bool, String) -> Void
+    ) {
+        do {
+            let package: DecodedPatchPackage
+            if let decoded = try? PatchPackageCodec.decode(patchData, password: nil) {
+                package = decoded
+            } else if let decodedOG = try? PatchPackageCodec.decode(patchData, password: "OG") {
+                package = decodedOG
+            } else {
+                package = try PatchPackageCodec.decode(patchData, password: nil)
+            }
+            let project = package.project
+            
+            // Adapt project for target bundle (Free Fire MAX vs TH)
+            var adaptedProject = project
+            adaptedProject.bundleIdentifiers = [targetBundle]
+            
+            var seenDirs = Set<String>()
+            adaptedProject.directories = project.directories
+                .map { dir in
+                    var d = dir
+                    d.bundleID = targetBundle
+                    return d
+                }
+                .filter { seenDirs.insert($0.relativePath).inserted }
+            
+            var seenRules = Set<String>()
+            adaptedProject.rules = project.rules
+                .map { rule in
+                    var r = rule
+                    r.bundleID = targetBundle
+                    if r.relativePath.contains("Library/Preferences/") {
+                        if targetBundle == "com.dts.freefiremax" {
+                            r.relativePath = "Library/Preferences/com.dts.freefiremax.plist"
+                            r.replacementFilename = "com.dts.freefiremax.plist"
+                        } else if targetBundle == "com.dts.freefireth" {
+                            r.relativePath = "Library/Preferences/com.dts.freefireth.plist"
+                            r.replacementFilename = "com.dts.freefireth.plist"
+                        }
+                    }
+                    return r
+                }
+                .filter { seenRules.insert($0.relativePath).inserted }
+            
+            // Revert any existing receipt first to ensure clean application
+            if let existingReceipt = DevicePatchService.latestReceipt(projectID: adaptedProject.id) {
+                try? DevicePatchService.restore(receipt: existingReceipt, allowChangedTargets: true)
+            }
+            
+            _ = try DevicePatchService.apply(project: adaptedProject)
+            
+            self.cacheLock.lock()
+            self.inMemoryPatchCache[normalizedKey] = adaptedProject
+            self.cacheLock.unlock()
+            
+            DispatchQueue.main.async {
+                completion(true, "Patch '\(project.name)' verified and applied successfully.")
+            }
+        } catch {
+            DispatchQueue.main.async {
+                let errMsg = ErrorSanitizer.sanitize(error.localizedDescription)
+                completion(false, "Patch execution failed: \(errMsg)")
+            }
+        }
+    }
+    
+    private func loadLocalPatchData(featureKey: String) -> Data? {
+        let filename: String
+        switch featureKey {
+        case "avatar_rooms", "avatar_p", "aim_drag_rooms":
+            filename = "Avatar DragP.3105"
+        case "avatar", "avatar_cs", "aim_drag", "aim_drag_cs":
+            filename = "Avatar Drag.3105"
+        case "hologram", "visuals":
+            filename = "Hologram.3105"
+        case "magic", "magic_bullet":
+            filename = "Magic.3105"
+        case "aimbody", "body_drag":
+            filename = "Aimbody.3105"
+        case "144", "fps_144":
+            filename = "144 FPS.3105"
+        default:
+            filename = "\(featureKey).3105"
+        }
+        
+        let ext = "3105"
+        let nameWithoutExt = filename.replacingOccurrences(of: ".3105", with: "")
+        
+        if let url = Bundle.main.url(forResource: nameWithoutExt, withExtension: ext) {
+            if let data = try? Data(contentsOf: url) { return data }
+        }
+        if let url = Bundle.main.url(forResource: nameWithoutExt, withExtension: ext, subdirectory: "skins") {
+            if let data = try? Data(contentsOf: url) { return data }
+        }
+        if let url = Bundle.main.url(forResource: nameWithoutExt, withExtension: ext, subdirectory: "patches") {
+            if let data = try? Data(contentsOf: url) { return data }
+        }
+        let bundlePath = Bundle.main.bundlePath
+        let directSkins = URL(fileURLWithPath: bundlePath).appendingPathComponent("skins").appendingPathComponent(filename)
+        if let data = try? Data(contentsOf: directSkins) { return data }
+        let directPatches = URL(fileURLWithPath: bundlePath).appendingPathComponent("patches").appendingPathComponent(filename)
+        if let data = try? Data(contentsOf: directPatches) { return data }
+        let rootUrl = URL(fileURLWithPath: bundlePath).appendingPathComponent(filename)
+        if let data = try? Data(contentsOf: rootUrl) { return data }
+        return nil
     }
     
     public func revertPatch(featureKey: String, targetBundle: String, completion: @escaping (Bool, String) -> Void) {
@@ -230,7 +302,18 @@ public final class CloudPatchService {
             }
         }
         
-        // Fallback: search all available receipts
+        // Also check cross-keys for avatar if normalizedKey is avatar-related
+        if normalizedKey.contains("avatar") || normalizedKey.contains("drag") {
+            for key in ["avatar_cs", "avatar_rooms", "avatar", "avatar_p", "aim_drag"] {
+                cacheLock.lock()
+                let p = inMemoryPatchCache[key]
+                cacheLock.unlock()
+                if let p = p, let receipt = DevicePatchService.latestReceipt(projectID: p.id) {
+                    try? DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
+                }
+            }
+        }
+        
         DispatchQueue.main.async {
             completion(true, "Feature toggled off.")
         }

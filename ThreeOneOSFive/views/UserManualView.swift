@@ -21,7 +21,7 @@ struct UserManualView: View {
             steps: [
                 "Open the game.",
                 "When the loading screen reaches around 40%, minimize the game.",
-                "Open this application and toggle Aim Drag ON.",
+                "Open this application and toggle Aim Drag ON (select CS Rank or Rooms mode).",
                 "Return to the game and continue.",
                 "After you reach the lobby, minimize the game again.",
                 "Come back to this application and toggle Aim Drag OFF.",
