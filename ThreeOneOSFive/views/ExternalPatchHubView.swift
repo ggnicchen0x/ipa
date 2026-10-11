@@ -28,7 +28,7 @@ struct ExternalPatchHubView: View {
 
     @State private var statusMessage: String = "Ready"
     @State private var processingFeature: String? = nil
-    @State private var showingDragModeSheet: Bool = false
+    @State private var showingDragModePopup: Bool = false
     @State private var isResettingGuest: Bool = false
     @State private var isRemovingResetConfig: Bool = false
     @State private var isRestoringGame: Bool = false
@@ -44,33 +44,49 @@ struct ExternalPatchHubView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Section 1: Game Configuration Card
-                    gameConfigSection
-                        .staggeredAppearance(index: 0)
+            ZStack {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Section 1: Game Configuration Card
+                        gameConfigSection
+                            .staggeredAppearance(index: 0)
 
-                    // Section 2: External Toggles
-                    externalTogglesSection
-                        .staggeredAppearance(index: 1)
+                        // Section 2: External Toggles
+                        externalTogglesSection
+                            .staggeredAppearance(index: 1)
 
-                    // Section 3: Guest Account Manager
-                    guestManagerSection
-                        .staggeredAppearance(index: 2)
+                        // Section 3: Guest Account Manager
+                        guestManagerSection
+                            .staggeredAppearance(index: 2)
+                    }
+                    .padding(.horizontal, AppTheme.pageInset)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
-                .padding(.horizontal, AppTheme.pageInset)
-                .padding(.top, 8)
-                .padding(.bottom, 32)
+                .background(AppTheme.pageBackground.ignoresSafeArea())
+
+                // Centered Drag MODE Modal Dialog (in-between screen)
+                if showingDragModePopup {
+                    Color.black.opacity(0.65)
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                showingDragModePopup = false
+                            }
+                        }
+
+                    dragModeModal
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        .zIndex(100)
+                }
             }
-            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .animation(.easeInOut(duration: 0.2), value: showingDragModePopup)
             .navigationTitle("Menu")
             .alert(alertTitle, isPresented: $showingAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
-            }
-            .sheet(isPresented: $showingDragModeSheet) {
-                dragModeSelectionSheet
             }
         }
     }
@@ -162,14 +178,15 @@ struct ExternalPatchHubView: View {
                     icon: "scope",
                     title: "Aim Drag",
                     subtitle: aimStableEnabled
-                        ? (aimDragMode == "rooms" ? "Active: Rooms (Max Drag)" : "Active: CS Rank (Smooth)")
+                        ? (aimDragMode == "rooms" ? "Active: Rooms" : "Active: CS Rank")
                         : "Enhance your Aim Target",
                     isOn: Binding(
                         get: { aimStableEnabled },
                         set: { newValue in
                             if newValue {
-                                // Do not apply immediately — show Drag MODE popup
-                                showingDragModeSheet = true
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                    showingDragModePopup = true
+                                }
                             } else {
                                 aimStableEnabled = false
                                 handleToggleChange(featureName: currentAimDragFeatureKey, isEnabled: false)
@@ -181,12 +198,6 @@ struct ExternalPatchHubView: View {
                 )
                 .padding(.horizontal, AppTheme.cardPadding)
                 .padding(.vertical, 10)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if aimStableEnabled {
-                        showingDragModeSheet = true
-                    }
-                }
 
                 Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
 
@@ -602,7 +613,9 @@ struct ExternalPatchHubView: View {
     
     // MARK: - Drag Mode Selection Pop-up
     private func selectDragMode(_ mode: String) {
-        showingDragModeSheet = false
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            showingDragModePopup = false
+        }
         let previousKey = currentAimDragFeatureKey
         let isAlreadyEnabled = aimStableEnabled
         aimDragMode = mode
@@ -618,140 +631,86 @@ struct ExternalPatchHubView: View {
         }
     }
 
-    private var dragModeSelectionSheet: some View {
-        ZStack {
-            Color(hex: 0x0e0e12).ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "scope")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(AppTheme.accent)
-                            Text("Drag MODE")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                        }
-                        Text("Select your target intensity level for Aim Drag")
-                            .font(.system(size: 12))
-                            .foregroundColor(AppTheme.textSecondary)
-                    }
-                    Spacer()
-                    Button(action: { showingDragModeSheet = false }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(Color.white.opacity(0.35))
-                    }
-                }
-                .padding(.top, 20)
-                .padding(.horizontal, 20)
-                
-                // Mode Options
-                VStack(spacing: 12) {
-                    // Option 1: CS Rank (Avatar Drag.3105)
-                    dragModeCard(
-                        title: "CS Rank",
-                        subtitle: "Calibrated smooth pull • Avatar Drag.3105",
-                        badge: "Ranked Match",
-                        badgeColor: Color(hex: 0x38bdf8),
-                        icon: "shield.checkered",
-                        isSelected: aimStableEnabled && aimDragMode == "cs_rank"
-                    ) {
-                        selectDragMode("cs_rank")
-                    }
-                    
-                    // Option 2: Rooms (Avatar DragP.3105)
-                    dragModeCard(
-                        title: "Rooms",
-                        subtitle: "Maximum velocity pull • Avatar DragP.3105",
-                        badge: "High Power",
-                        badgeColor: Color(hex: 0xf43f5e),
-                        icon: "flame.fill",
-                        isSelected: aimStableEnabled && aimDragMode == "rooms"
-                    ) {
-                        selectDragMode("rooms")
-                    }
-                }
-                .padding(.horizontal, 20)
+    private var dragModeModal: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Text("DRAG MODE")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .tracking(1.2)
                 
                 Spacer()
+                
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                        showingDragModePopup = false
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(Color.white.opacity(0.35))
+                }
+                .buttonStyle(.plain)
             }
-        }
-        .presentationDetents([.height(310)])
-        .presentationDragIndicator(.visible)
-    }
+            .padding(.top, 20)
+            .padding(.horizontal, 22)
 
-    private func dragModeCard(
-        title: String,
-        subtitle: String,
-        badge: String,
-        badgeColor: Color,
-        icon: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                // Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isSelected ? AppTheme.accent.opacity(0.2) : Color.white.opacity(0.06))
-                        .frame(width: 44, height: 44)
+            // Two buttons side by side: CS Rank & Rooms
+            HStack(spacing: 12) {
+                // CS Rank Button
+                Button {
+                    selectDragMode("cs_rank")
+                } label: {
+                    Text("CS Rank")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(aimStableEnabled && aimDragMode == "cs_rank" ? AppTheme.accent : Color.white.opacity(0.08))
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(isSelected ? AppTheme.accent.opacity(0.4) : Color.white.opacity(0.06), lineWidth: 1)
+                                .stroke(aimStableEnabled && aimDragMode == "cs_rank" ? AppTheme.accent : Color.white.opacity(0.12), lineWidth: 1)
                         )
-                    Image(systemName: icon)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(isSelected ? AppTheme.accent : .white)
                 }
-                
-                // Info
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(title)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                        
-                        Text(badge)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(badgeColor)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(badgeColor.opacity(0.15))
-                            .clipShape(Capsule())
-                    }
-                    
-                    Text(subtitle)
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(AppTheme.textSecondary)
+                .buttonStyle(.plain)
+
+                // Rooms Button
+                Button {
+                    selectDragMode("rooms")
+                } label: {
+                    Text("Rooms")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(aimStableEnabled && aimDragMode == "rooms" ? AppTheme.accent : Color.white.opacity(0.08))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(aimStableEnabled && aimDragMode == "rooms" ? AppTheme.accent : Color.white.opacity(0.12), lineWidth: 1)
+                        )
                 }
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(AppTheme.accent)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color.white.opacity(0.3))
-                }
+                .buttonStyle(.plain)
             }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? AppTheme.accent.opacity(0.12) : AppTheme.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(isSelected ? AppTheme.accent.opacity(0.5) : AppTheme.cardBorder, lineWidth: 1)
-                    )
-            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 22)
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(width: 310)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(hex: 0x14141c))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(AppTheme.accent.opacity(0.35), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.65), radius: 30, x: 0, y: 15)
+        )
     }
     
     private func log(_ message: String) {
