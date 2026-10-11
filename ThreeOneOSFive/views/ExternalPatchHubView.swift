@@ -21,7 +21,7 @@ struct ExternalPatchHubView: View {
     @AppStorage("mod.fps_144") private var fps144Enabled: Bool = false
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
     @AppStorage("mod.body_drag") private var bodyDragEnabled: Bool = false
-    @AppStorage("mod.visuals") private var visualsEnabled: Bool = false
+    @AppStorage("mod.clean_cache_asset") private var cleanCacheAssetEnabled: Bool = false
     @AppStorage("guest_reset.injected") private var isGuestResetInjected: Bool = false
 
     @State private var statusMessage: String = "Ready"
@@ -43,7 +43,7 @@ struct ExternalPatchHubView: View {
             List {
                 // Section 1: Game Configuration
                 Section {
-                    Picker("Select Game", selection: $targetBundle) {
+                    Picker("Target Version", selection: $targetBundle) {
                         ForEach(supportedBundles, id: \.1) { item in
                             Text(item.0).tag(item.1)
                         }
@@ -51,19 +51,37 @@ struct ExternalPatchHubView: View {
                     .pickerStyle(.menu)
 
                     HStack {
-                        Label("Kernel Status", systemImage: "bolt.shield")
+                        Label {
+                            Text("Target Bundle ID")
+                        } icon: {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(.gray)
+                        }
                         Spacer()
-                        Text(appState.exploitStatus.isSuccess ? "Active & Rooted" : "Ready to Exploit")
+                        Text(targetBundle)
+                            .font(.system(.footnote, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Label {
+                            Text("Kernel Status")
+                        } icon: {
+                            Image(systemName: "shield.lefthalf.filled")
+                                .foregroundStyle(.gray)
+                        }
+                        Spacer()
+                        Text(appState.exploitStatus.isSuccess ? "Active & Rooted" : "Active & Rooted")
                             .font(.footnote)
-                            .foregroundStyle(appState.exploitStatus.isSuccess ? .green : .orange)
+                            .foregroundStyle(.white)
                     }
                 } header: {
-                    Text("Game Configuration")
+                    Text("GAME CONFIGURATION")
                 } footer: {
                     Text("Select your installed game version before toggling features.")
                 }
 
-                // Section 2: External Toggles (Self-Applying & Self-Reverting)
+                // Section 2: External Toggles
                 Section {
                     // 1. Aim Drag
                     Toggle(isOn: $aimStableEnabled) {
@@ -83,7 +101,7 @@ struct ExternalPatchHubView: View {
                                 }
                             }
                         } icon: {
-                            AppRowIcon(systemName: "scope", tint: .red)
+                            AppRowIcon(systemName: "scope", tint: .gray)
                         }
                     }
                     .disabled(processingFeature != nil)
@@ -91,30 +109,30 @@ struct ExternalPatchHubView: View {
                         handleToggleChange(featureName: "avatar", isEnabled: isEnabled)
                     }
 
-                    // 2. Aim Body
-                    Toggle(isOn: $bodyDragEnabled) {
+                    // 2. 144 FPS Unlock
+                    Toggle(isOn: $fps144Enabled) {
                         Label {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Aim Body")
+                                    Text("144 FPS Unlock")
                                         .fontWeight(.medium)
-                                    Text("Only Red shots/high accuracy")
+                                    Text("Unlocks ultra-smooth 144Hz gameplay")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                if processingFeature == "aimbody" {
+                                if processingFeature == "144" {
                                     Spacer()
                                     ProgressView()
                                         .scaleEffect(0.8)
                                 }
                             }
                         } icon: {
-                            AppRowIcon(systemName: "bolt.fill", tint: .blue)
+                            AppRowIcon(systemName: "speedometer", tint: .gray)
                         }
                     }
                     .disabled(processingFeature != nil)
-                    .onChange(of: bodyDragEnabled) { isEnabled in
-                        handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
+                    .onChange(of: fps144Enabled) { isEnabled in
+                        handleToggleChange(featureName: "144", isEnabled: isEnabled)
                     }
 
                     // 3. Magic Bullet
@@ -135,7 +153,7 @@ struct ExternalPatchHubView: View {
                                 }
                             }
                         } icon: {
-                            AppRowIcon(systemName: "flame.fill", tint: .purple)
+                            AppRowIcon(systemName: "flame.fill", tint: .gray)
                         }
                     }
                     .disabled(processingFeature != nil)
@@ -143,62 +161,62 @@ struct ExternalPatchHubView: View {
                         handleToggleChange(featureName: "magic", isEnabled: isEnabled)
                     }
 
-                    // 4. Visuals
-                    Toggle(isOn: $visualsEnabled) {
+                    // 4. Aim Body
+                    Toggle(isOn: $bodyDragEnabled) {
                         Label {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Visuals")
+                                    Text("Aim Body")
                                         .fontWeight(.medium)
-                                    Text("Hologram for Location Exposed")
+                                    Text("Only Red shots/high accuracy")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                if processingFeature == "hologram" {
+                                if processingFeature == "aimbody" {
                                     Spacer()
                                     ProgressView()
                                         .scaleEffect(0.8)
                                 }
                             }
                         } icon: {
-                            AppRowIcon(systemName: "eye.fill", tint: .cyan)
+                            AppRowIcon(systemName: "bolt.fill", tint: .gray)
                         }
                     }
                     .disabled(processingFeature != nil)
-                    .onChange(of: visualsEnabled) { isEnabled in
-                        handleToggleChange(featureName: "hologram", isEnabled: isEnabled)
+                    .onChange(of: bodyDragEnabled) { isEnabled in
+                        handleToggleChange(featureName: "aimbody", isEnabled: isEnabled)
                     }
 
-                    // 5. 144 FPS Unlock
-                    Toggle(isOn: $fps144Enabled) {
+                    // 5. Clean Cache Asset
+                    Toggle(isOn: $cleanCacheAssetEnabled) {
                         Label {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("144 FPS Unlock")
+                                    Text("Clean Cache Asset")
                                         .fontWeight(.medium)
-                                    Text("Unlocks ultra-smooth 144Hz gameplay")
+                                    Text("Cleans and refreshes game cache")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                if processingFeature == "144" {
+                                if processingFeature == "cleancache" {
                                     Spacer()
                                     ProgressView()
                                         .scaleEffect(0.8)
                                 }
                             }
                         } icon: {
-                            AppRowIcon(systemName: "speedometer", tint: .green)
+                            AppRowIcon(systemName: "arrow.triangle.2.circlepath", tint: .gray)
                         }
                     }
                     .disabled(processingFeature != nil)
-                    .onChange(of: fps144Enabled) { isEnabled in
-                        handleToggleChange(featureName: "144", isEnabled: isEnabled)
+                    .onChange(of: cleanCacheAssetEnabled) { isEnabled in
+                        handleCleanCacheAsset(isEnabled: isEnabled)
                     }
                 } header: {
-                    Text("External Toggles")
+                    Text("EXTERNAL TOGGLES")
                 }
 
-                // Section 3: Other
+                // Section 3: Guest Account Manager
                 Section {
                     // Item 1: Dynamic Guest Reset / Revert Reset
                     Button {
@@ -211,7 +229,7 @@ struct ExternalPatchHubView: View {
                         HStack {
                             AppRowIcon(
                                 systemName: isGuestResetInjected ? "arrow.uturn.backward.circle.fill" : "person.crop.circle.badge.minus",
-                                tint: isGuestResetInjected ? .orange : AppTheme.accent
+                                tint: .gray
                             )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(isGuestResetInjected ? "Revert Reset" : "Guest Reset")
@@ -234,7 +252,7 @@ struct ExternalPatchHubView: View {
                         restoreAllDefaults()
                     } label: {
                         HStack {
-                            AppRowIcon(systemName: "arrow.counterclockwise.circle.fill", tint: .red)
+                            AppRowIcon(systemName: "arrow.counterclockwise.circle.fill", tint: .gray)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Reset All Changes")
                                     .fontWeight(.medium)
@@ -251,7 +269,7 @@ struct ExternalPatchHubView: View {
                     }
                     .disabled(isRestoringGame || isResettingGuest || isRemovingResetConfig)
                 } header: {
-                    Text("Other")
+                    Text("GUEST ACCOUNT MANAGER")
                 } footer: {
                     Text("Use Guest Reset to wipe guest data. Use Reset All Changes to restore all original game files and disable active mods.")
                 }
@@ -265,6 +283,41 @@ struct ExternalPatchHubView: View {
         }
     }
 
+    private func handleCleanCacheAsset(isEnabled: Bool) {
+        if isEnabled {
+            processingFeature = "cleancache"
+            CloudPatchService.shared.clearCache()
+            
+            Task {
+                var cleaned = 0
+                if let containerPath = ContainerStore.resolveAppContainerPath(bundleID: targetBundle) {
+                    let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+                    let targetDirs = [
+                        containerURL.appendingPathComponent("Library/Caches", isDirectory: true),
+                        containerURL.appendingPathComponent("tmp", isDirectory: true)
+                    ]
+                    let fm = FileManager.default
+                    for dir in targetDirs {
+                        if let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+                            for item in items {
+                                try? fm.removeItem(at: item)
+                                cleaned += 1
+                            }
+                        }
+                    }
+                }
+                
+                await MainActor.run {
+                    self.processingFeature = nil
+                    self.statusMessage = "Cleaned \(cleaned) cached items."
+                    self.log("hub: clean cache completed (\(cleaned) items)")
+                }
+            }
+        } else {
+            statusMessage = "Ready"
+        }
+    }
+
     private func handleToggleChange(featureName: String, isEnabled: Bool) {
         let featureTitle: String
         switch featureName {
@@ -272,7 +325,6 @@ struct ExternalPatchHubView: View {
         case "144": featureTitle = "144 FPS Unlock"
         case "magic": featureTitle = "Magic Bullet"
         case "aimbody": featureTitle = "Aim Body"
-        case "hologram", "visuals": featureTitle = "Visuals"
         default: featureTitle = featureName.capitalized
         }
         
@@ -303,7 +355,6 @@ struct ExternalPatchHubView: View {
                         case "144": self.fps144Enabled = false
                         case "magic": self.magicBulletEnabled = false
                         case "aimbody": self.bodyDragEnabled = false
-                        case "hologram", "visuals": self.visualsEnabled = false
                         default: break
                         }
                     }
@@ -360,7 +411,7 @@ struct ExternalPatchHubView: View {
                 fps144Enabled = false
                 magicBulletEnabled = false
                 bodyDragEnabled = false
-                visualsEnabled = false
+                cleanCacheAssetEnabled = false
                 isGuestResetInjected = false
                 isRestoringGame = false
                 alertTitle = "Reset All Changes"
