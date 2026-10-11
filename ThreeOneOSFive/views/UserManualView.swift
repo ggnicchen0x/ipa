@@ -122,7 +122,7 @@ struct UserManualView: View {
             HStack {
                 StatusBadge(text: "OPERATIONAL MANUAL", style: .active)
                 Spacer()
-                Text("v2.0")
+                Text("v1.1.3")
                     .font(.caption2.monospaced())
                     .foregroundStyle(AppTheme.textMuted)
             }
