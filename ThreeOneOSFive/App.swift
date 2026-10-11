@@ -99,6 +99,10 @@ class AppState: ObservableObject {
     @Published var kernelExploitRunning = false
 
     private var autoRunAttempted = false
+    
+    init() {
+        detectSupport()
+    }
 
     var kernelExploitApplicable: Bool {
         KernelExploit.isApplicable(

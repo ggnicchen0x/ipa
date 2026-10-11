@@ -73,7 +73,11 @@ struct UserAccountView: View {
                         .font(.headline.weight(.bold))
                         .foregroundStyle(AppTheme.textPrimary)
                     
-                    StatusBadge(text: "AUTHENTICATED", style: .active)
+                    if appState.isSupported {
+                        StatusBadge(text: "SUPPORTED", color: .green, isActive: true)
+                    } else {
+                        StatusBadge(text: "UNSUPPORTED", color: .red, isActive: true)
+                    }
                 }
 
                 Text("BYTE IOS External Member")

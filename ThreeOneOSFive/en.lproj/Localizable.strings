@@ -35,16 +35,16 @@
 "onboarding.welcome_message" = "Developed by Nicchen";
 "onboarding.welcome_badge" = "Official Byte External identity";
 "onboarding.versions_title" = "Supported iOS versions";
-"onboarding.versions_subtitle" = "3105 is verified on the ranges below. Unsupported builds are blocked.";
+"onboarding.versions_subtitle" = "Byte iOS is verified on the ranges below. Unsupported builds are blocked.";
 "onboarding.versions_footer" = "This device: iOS %@ (%@)";
 "onboarding.beta" = "Beta";
 "onboarding.developer_beta" = "Developer Beta %@";
 "onboarding.public_beta" = "Public Beta %@";
 "onboarding.install_title" = "Certificate requirements";
-"onboarding.install_message" = "3105 requires a supported signing method to access device features.";
+"onboarding.install_message" = "Byte iOS requires a supported signing method to access device features.";
 "onboarding.install_ok" = "Works with enterprise certificates, including eSign and similar enterprise installs.";
 "onboarding.install_bad" = "Does not work with SideStore, AltStore, 3uTools or LiveContainer.";
-"onboarding.install_jailbreak" = "On iOS 17 through iOS 18.7.1, 3105 will not work if the device is jailbroken.";
+"onboarding.install_jailbreak" = "On iOS 17 through iOS 18.7.1, Byte iOS will not work if the device is jailbroken.";
 "onboarding.install_footer" = "Use a supported certificate on a non-jailbroken device before continuing.";
 
 "dashboard.exploit_access" = "Exploit access";
