@@ -19,7 +19,9 @@ struct ExternalPatchHubView: View {
     
     @AppStorage("external_hub.target_bundle") private var targetBundle: String = "com.dts.freefiremax"
     @AppStorage("mod.aim_stable") private var aimStableEnabled: Bool = false
-    @AppStorage("mod.aim_drag_mode") private var aimDragMode: String = "cs_rank" // "cs_rank" or "rooms"
+    // FF MAX mode: "cs_rank" or "rooms"
+    // FF Regular mode: "antena_on" or "antena_off"
+    @AppStorage("mod.aim_drag_mode") private var aimDragMode: String = "cs_rank"
     @AppStorage("mod.fps_144") private var fps144Enabled: Bool = false
     @AppStorage("mod.magic_bullet") private var magicBulletEnabled: Bool = false
     @AppStorage("mod.body_drag") private var bodyDragEnabled: Bool = false
@@ -40,6 +42,13 @@ struct ExternalPatchHubView: View {
     private let supportedBundles = [
         ("Free Fire MAX", "com.dts.freefiremax"),
         ("Free Fire TH", "com.dts.freefireth")
+    ]
+
+    // All feature keys that represent Aim Drag variants across both games.
+    // Used to decide isProcessing / isDisabled on the Aim Drag row.
+    private static let aimDragFeatureKeys: Set<String> = [
+        "avatar", "avatar_cs", "avatar_rooms", "avatar_p",
+        "avatar_ffth", "avatar_ffth_antena"
     ]
 
     private var selectorOptions: [PremiumGameOption] {
@@ -167,13 +176,11 @@ struct ExternalPatchHubView: View {
                 .padding(.bottom, 10)
 
             VStack(spacing: 0) {
-                // 1. Aim Drag (Multi-mode: CS Rank / Rooms)
+                // 1. Aim Drag (Multi-mode popup depends on selected game)
                 PremiumToggleRow(
                     icon: "scope",
                     title: "Aim Drag",
-                    subtitle: aimStableEnabled
-                        ? (aimDragMode == "rooms" ? "Active: Rooms" : "Active: CS Rank")
-                        : "Enhance your Aim Target",
+                    subtitle: aimStableEnabled ? currentAimDragSubtitle : "Enhance your Aim Target",
                     isOn: Binding(
                         get: { aimStableEnabled },
                         set: { newValue in
@@ -187,8 +194,8 @@ struct ExternalPatchHubView: View {
                             }
                         }
                     ),
-                    isProcessing: processingFeature == "avatar" || processingFeature == "avatar_cs" || processingFeature == "avatar_rooms",
-                    isDisabled: processingFeature != nil && !["avatar", "avatar_cs", "avatar_rooms"].contains(processingFeature)
+                    isProcessing: Self.aimDragFeatureKeys.contains(processingFeature ?? ""),
+                    isDisabled: processingFeature != nil && !Self.aimDragFeatureKeys.contains(processingFeature ?? "")
                 )
                 .padding(.horizontal, AppTheme.cardPadding)
                 .padding(.vertical, 10)
@@ -229,19 +236,19 @@ struct ExternalPatchHubView: View {
 
                 Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
 
-                // 4. Visuals (Hologram Location Exposed)
+                // 4. Visuals (Hologram Location Exposed) — uses the new v2 hologram file
                 PremiumToggleRow(
                     icon: "eye.fill",
                     title: "Visuals",
                     subtitle: "Hologram for Location Exposed",
                     isOn: $visualsEnabled,
-                    isProcessing: processingFeature == "hologram",
-                    isDisabled: processingFeature != nil && processingFeature != "hologram"
+                    isProcessing: processingFeature == "hologram_v2",
+                    isDisabled: processingFeature != nil && processingFeature != "hologram_v2"
                 )
                 .padding(.horizontal, AppTheme.cardPadding)
                 .padding(.vertical, 10)
                 .onChange(of: visualsEnabled) { isEnabled in
-                    handleToggleChange(featureName: "hologram", isEnabled: isEnabled)
+                    handleToggleChange(featureName: "hologram_v2", isEnabled: isEnabled)
                 }
 
                 Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
@@ -392,10 +399,17 @@ struct ExternalPatchHubView: View {
 
     private func handleGameSwitch(from previousBundle: String, to newBundle: String) {
         guard previousBundle != newBundle else { return }
-        // Capture then clear each active feature against the OLD target so
-        // the new game starts from a clean state.
+        // currentAimDragFeatureKey uses the CURRENT targetBundle for routing.
+        // We need the key that was active against the OLD bundle, so compute
+        // it from previousBundle + the current stored aimDragMode.
+        let previousAimKey: String = {
+            if previousBundle == "com.dts.freefireth" {
+                return aimDragMode == "antena_off" ? "avatar_ffth" : "avatar_ffth_antena"
+            }
+            return aimDragMode == "rooms" ? "avatar_rooms" : "avatar"
+        }()
         if aimStableEnabled {
-            CloudPatchService.shared.revertPatch(featureKey: currentAimDragFeatureKey, targetBundle: previousBundle) { _, _ in }
+            CloudPatchService.shared.revertPatch(featureKey: previousAimKey, targetBundle: previousBundle) { _, _ in }
             aimStableEnabled = false
         }
         if bodyDragEnabled {
@@ -407,20 +421,36 @@ struct ExternalPatchHubView: View {
             magicBulletEnabled = false
         }
         if visualsEnabled {
-            CloudPatchService.shared.revertPatch(featureKey: "hologram", targetBundle: previousBundle) { _, _ in }
+            CloudPatchService.shared.revertPatch(featureKey: "hologram_v2", targetBundle: previousBundle) { _, _ in }
             visualsEnabled = false
         }
         if fps144Enabled {
             CloudPatchService.shared.revertPatch(featureKey: "144", targetBundle: previousBundle) { _, _ in }
             fps144Enabled = false
         }
+        // Reset drag mode to the default valid mode for the NEW game.
+        aimDragMode = (newBundle == "com.dts.freefireth") ? "antena_on" : "cs_rank"
         processingFeature = nil
         statusMessage = "Switched to \(selectorOptions.first(where: { $0.id == newBundle })?.title ?? newBundle)"
         log("hub: game switched \(previousBundle) -> \(newBundle); active features reverted")
     }
 
+    private var isFFRegular: Bool { targetBundle == "com.dts.freefireth" }
+
     private var currentAimDragFeatureKey: String {
-        aimDragMode == "rooms" ? "avatar_rooms" : "avatar"
+        if isFFRegular {
+            // FF Regular: antena_on -> AimAntena.3105, antena_off -> Aimdragffth.3105
+            return aimDragMode == "antena_off" ? "avatar_ffth" : "avatar_ffth_antena"
+        }
+        // FF MAX: cs_rank -> avatar, rooms -> avatar_rooms
+        return aimDragMode == "rooms" ? "avatar_rooms" : "avatar"
+    }
+
+    private var currentAimDragSubtitle: String {
+        if isFFRegular {
+            return aimDragMode == "antena_off" ? "Active: Without Antenna" : "Active: With Antenna"
+        }
+        return aimDragMode == "rooms" ? "Active: Rooms" : "Active: CS Rank"
     }
 
     private func handleToggleChange(featureName: String, isEnabled: Bool) {
@@ -428,10 +458,12 @@ struct ExternalPatchHubView: View {
         switch featureName {
         case "avatar", "avatar_cs": featureTitle = "Aim Drag (CS Rank)"
         case "avatar_rooms", "avatar_p": featureTitle = "Aim Drag (Rooms)"
+        case "avatar_ffth_antena": featureTitle = "Aim Drag (With Antenna)"
+        case "avatar_ffth": featureTitle = "Aim Drag (Without Antenna)"
         case "144": featureTitle = "144 FPS Unlock"
         case "magic": featureTitle = "Magic Bullet"
         case "aimbody": featureTitle = "Aim Body"
-        case "hologram", "visuals": featureTitle = "Visuals"
+        case "hologram", "hologram_v2", "visuals": featureTitle = "Visuals"
         default: featureTitle = featureName.capitalized
         }
         
@@ -457,11 +489,12 @@ struct ExternalPatchHubView: View {
                         self.log("hub: apply failed for \(featureTitle): \(cleanMessage)")
                         
                         switch featureName {
-                        case "avatar", "avatar_cs", "avatar_rooms", "avatar_p": self.aimStableEnabled = false
+                        case "avatar", "avatar_cs", "avatar_rooms", "avatar_p",
+                             "avatar_ffth", "avatar_ffth_antena": self.aimStableEnabled = false
                         case "144": self.fps144Enabled = false
                         case "magic": self.magicBulletEnabled = false
                         case "aimbody": self.bodyDragEnabled = false
-                        case "hologram", "visuals": self.visualsEnabled = false
+                        case "hologram", "hologram_v2", "visuals": self.visualsEnabled = false
                         default: break
                         }
                     }
@@ -655,16 +688,21 @@ struct ExternalPatchHubView: View {
     }
 
     private var dragModeModal: some View {
-        VStack(spacing: 20) {
+        // Build the two button descriptors depending on the selected game.
+        let options: [(label: String, mode: String)] = isFFRegular
+            ? [("With Antenna", "antena_on"), ("Without Antenna", "antena_off")]
+            : [("CS Rank", "cs_rank"), ("Rooms", "rooms")]
+
+        return VStack(spacing: 20) {
             // Header
             HStack {
                 Text("DRAG MODE")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .tracking(1.2)
-                
+
                 Spacer()
-                
+
                 Button {
                     withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
                         showingDragModePopup = false
@@ -679,47 +717,28 @@ struct ExternalPatchHubView: View {
             .padding(.top, 20)
             .padding(.horizontal, 22)
 
-            // Two buttons side by side: CS Rank & Rooms
+            // Two buttons side by side, labels sourced from the game-aware options.
             HStack(spacing: 12) {
-                // CS Rank Button
-                Button {
-                    selectDragMode("cs_rank")
-                } label: {
-                    Text("CS Rank")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(aimStableEnabled && aimDragMode == "cs_rank" ? AppTheme.accent : Color.white.opacity(0.08))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(aimStableEnabled && aimDragMode == "cs_rank" ? AppTheme.accent : Color.white.opacity(0.12), lineWidth: 1)
-                        )
+                ForEach(options, id: \.mode) { opt in
+                    Button {
+                        selectDragMode(opt.mode)
+                    } label: {
+                        Text(opt.label)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(aimStableEnabled && aimDragMode == opt.mode ? AppTheme.accent : Color.white.opacity(0.08))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(aimStableEnabled && aimDragMode == opt.mode ? AppTheme.accent : Color.white.opacity(0.12), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-
-                // Rooms Button
-                Button {
-                    selectDragMode("rooms")
-                } label: {
-                    Text("Rooms")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(aimStableEnabled && aimDragMode == "rooms" ? AppTheme.accent : Color.white.opacity(0.08))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(aimStableEnabled && aimDragMode == "rooms" ? AppTheme.accent : Color.white.opacity(0.12), lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 22)
