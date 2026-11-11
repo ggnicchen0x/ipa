@@ -42,6 +42,25 @@ struct ExternalPatchHubView: View {
         ("Free Fire TH", "com.dts.freefireth")
     ]
 
+    private var selectorOptions: [PremiumGameOption] {
+        [
+            PremiumGameOption(
+                id: "com.dts.freefiremax",
+                title: "Free Fire MAX",
+                subtitle: "Global · Enhanced client",
+                icon: "flame.fill",
+                tint: AppTheme.accent
+            ),
+            PremiumGameOption(
+                id: "com.dts.freefireth",
+                title: "Free Fire TH",
+                subtitle: "Thailand region client",
+                icon: "flame.fill",
+                tint: AppTheme.accent
+            )
+        ]
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -101,46 +120,23 @@ struct ExternalPatchHubView: View {
                 .padding(.top, AppTheme.cardPadding)
                 .padding(.bottom, 14)
 
-            // Game Picker
-            HStack {
-                Label {
-                    Text("Select Game")
-                        .font(.system(size: 15, weight: .medium))
-                } icon: {
+            // Game Picker (Premium Dropdown)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "square.grid.2x2.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppTheme.accent)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppTheme.accent.opacity(0.85))
+                    Text("SELECT GAME")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .tracking(0.6)
                 }
-                Spacer()
-                Picker("", selection: $targetBundle) {
-                    ForEach(supportedBundles, id: \.1) { item in
-                        Text(item.0).tag(item.1)
-                    }
+                PremiumGameSelector(
+                    selection: $targetBundle,
+                    options: selectorOptions
+                ) { previous, next in
+                    handleGameSwitch(from: previous, to: next)
                 }
-                .pickerStyle(.menu)
-                .tint(AppTheme.accent)
-            }
-            .padding(.horizontal, AppTheme.cardPadding)
-            .padding(.vertical, 12)
-
-            Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
-
-            // Kernel Status
-            HStack {
-                Label {
-                    Text("Kernel Status")
-                        .font(.system(size: 15, weight: .medium))
-                } icon: {
-                    Image(systemName: "shield.lefthalf.filled")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppTheme.accent)
-                }
-                Spacer()
-                StatusBadge(
-                    text: "Active & Rooted",
-                    color: .green,
-                    isActive: true
-                )
             }
             .padding(.horizontal, AppTheme.cardPadding)
             .padding(.vertical, 12)
@@ -394,6 +390,35 @@ struct ExternalPatchHubView: View {
                         .stroke(AppTheme.cardBorder, lineWidth: 0.5)
                 )
         )
+    }
+
+    private func handleGameSwitch(from previousBundle: String, to newBundle: String) {
+        guard previousBundle != newBundle else { return }
+        // Capture then clear each active feature against the OLD target so
+        // the new game starts from a clean state.
+        if aimStableEnabled {
+            CloudPatchService.shared.revertPatch(featureKey: currentAimDragFeatureKey, targetBundle: previousBundle) { _, _ in }
+            aimStableEnabled = false
+        }
+        if bodyDragEnabled {
+            CloudPatchService.shared.revertPatch(featureKey: "aimbody", targetBundle: previousBundle) { _, _ in }
+            bodyDragEnabled = false
+        }
+        if magicBulletEnabled {
+            CloudPatchService.shared.revertPatch(featureKey: "magic", targetBundle: previousBundle) { _, _ in }
+            magicBulletEnabled = false
+        }
+        if visualsEnabled {
+            CloudPatchService.shared.revertPatch(featureKey: "hologram", targetBundle: previousBundle) { _, _ in }
+            visualsEnabled = false
+        }
+        if fps144Enabled {
+            CloudPatchService.shared.revertPatch(featureKey: "144", targetBundle: previousBundle) { _, _ in }
+            fps144Enabled = false
+        }
+        processingFeature = nil
+        statusMessage = "Switched to \(selectorOptions.first(where: { $0.id == newBundle })?.title ?? newBundle)"
+        log("hub: game switched \(previousBundle) -> \(newBundle); active features reverted")
     }
 
     private var currentAimDragFeatureKey: String {

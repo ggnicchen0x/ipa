@@ -5,3 +5,8 @@
 #import "kexploit/kutils.h"
 #import "helpers/AppIconHelper.h"
 #import "helpers/DisplayIdentity.h"
+
+#include <stdint.h>
+// Hardened runtime shield surface (implemented in helpers/AntiDetection.m).
+uint32_t TGTamperCount(void);
+uint64_t TGIntegrityFingerprint(void);

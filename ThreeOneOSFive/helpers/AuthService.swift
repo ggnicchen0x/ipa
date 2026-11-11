@@ -21,8 +21,20 @@ public final class AuthService: ObservableObject {
     private let savedLicenseKey = "com.threeoneosfive.auth.license_key"
     private let savedExpirationKey = "com.threeoneosfive.auth.expiration_date"
     private let lockoutUntilKey = "com.threeoneosfive.auth.lockout_until"
+    private let sessionBindingKey = "com.threeoneosfive.auth.session_binding"
+    private let lastValidatedKey = "com.threeoneosfive.auth.last_validated"
     private let keychainService = "com.apple.mobile.MobileHouseArrest.auth"
-    
+
+    // Session freshness: force a re-validate if the last successful validation
+    // is older than this window (seconds). Defeats stolen-token replay after
+    // a device changes state while the server is unreachable.
+    private let sessionFreshnessWindow: TimeInterval = 60 * 60 * 6 // 6 hours
+
+    // Snapshot of the runtime tamper counter taken at login. If it ever
+    // advances during the session we treat the session as compromised.
+    private var tamperBaseline: UInt32 = 0
+    private var integritySnapshot: UInt64 = 0
+
     @Published public var isAuthenticated: Bool = false
     @Published public var isLoading: Bool = false
     @Published public var errorMessage: String? = nil
@@ -109,14 +121,81 @@ public final class AuthService: ObservableObject {
     private var localAttemptTimestamps: [Date] = []
     
     private init() {
+        // Snapshot the runtime shield state before anything else touches auth.
+        self.tamperBaseline = TGTamperCount()
+        self.integritySnapshot = TGIntegrityFingerprint()
+
         checkSavedLockout()
         checkForUpdates()
-        
-        // Check for saved session in secure Keychain on launch
+
+        // Refuse to resume a session if the runtime shield already flagged
+        // tampering before the auth stack even initialised.
+        guard tamperBaseline == 0 else {
+            purgeLocalSession()
+            return
+        }
+
+        // Check for saved session in secure Keychain on launch.
         if let token = loadKeychain(key: tokenKey), !token.isEmpty {
+            // Verify the token is bound to this device + build fingerprint.
+            guard verifySessionBinding(token: token) else {
+                purgeLocalSession()
+                return
+            }
             self.activeLicense = loadKeychain(key: savedLicenseKey) ?? ""
             self.expirationText = loadKeychain(key: savedExpirationKey) ?? ""
             self.validateSessionSilently(token: token)
+        }
+    }
+
+    // MARK: - Session Binding (anti-replay / anti-crack)
+    // Binds the issued token to this device's hardware ID and the running
+    // binary's integrity fingerprint. If any of (token, hwid, fingerprint)
+    // changes between launches, the binding fails and the session is wiped.
+    private func computeSessionBinding(token: String) -> String {
+        let payload = "\(token)|\(hardwareID)|\(integritySnapshot)|\(appVersion)"
+        return hmacSHA256(payload: payload, key: hmacSecret)
+    }
+
+    private func storeSessionBinding(token: String) {
+        let binding = computeSessionBinding(token: token)
+        saveKeychain(key: sessionBindingKey, value: binding)
+        saveKeychain(key: lastValidatedKey, value: String(Int(Date().timeIntervalSince1970)))
+    }
+
+    private func verifySessionBinding(token: String) -> Bool {
+        guard let stored = loadKeychain(key: sessionBindingKey), !stored.isEmpty else {
+            return false
+        }
+        let expected = computeSessionBinding(token: token)
+        // Constant-time compare: avoid short-circuit so the comparison can't
+        // be timed to reveal which prefix matches.
+        guard stored.count == expected.count else { return false }
+        var mismatch: UInt8 = 0
+        let a = Array(stored.utf8)
+        let b = Array(expected.utf8)
+        for i in 0..<a.count { mismatch |= a[i] ^ b[i] }
+        return mismatch == 0
+    }
+
+    // Returns true when the runtime shield flagged tampering after login,
+    // or when the integrity fingerprint drifted (patched binary mid-session).
+    public var isRuntimeCompromised: Bool {
+        TGTamperCount() > tamperBaseline || TGIntegrityFingerprint() != integritySnapshot
+    }
+
+    private func purgeLocalSession() {
+        deleteKeychain(key: tokenKey)
+        deleteKeychain(key: savedLicenseKey)
+        deleteKeychain(key: savedExpirationKey)
+        deleteKeychain(key: sessionBindingKey)
+        deleteKeychain(key: lastValidatedKey)
+        UserDefaults.standard.removeObject(forKey: "saved_license_key")
+        UserDefaults.standard.synchronize()
+        DispatchQueue.main.async {
+            self.isAuthenticated = false
+            self.activeLicense = ""
+            self.expirationText = ""
         }
     }
     
@@ -344,10 +423,18 @@ public final class AuthService: ObservableObject {
                 let expiresAt = json["expires_at"] as? String ?? "LIFETIME"
                 
                 DispatchQueue.main.async {
+                    // Refuse to accept a successful login if the runtime shield
+                    // reports tampering (debugger, patched binary, missing CodeSignature).
+                    guard !self.isRuntimeCompromised else {
+                        self.purgeLocalSession()
+                        completion(false, "Runtime integrity check failed.")
+                        return
+                    }
                     self.localAttemptTimestamps.removeAll()
                     self.saveKeychain(key: self.tokenKey, value: token)
                     self.saveKeychain(key: self.savedLicenseKey, value: cleanKey)
                     self.saveKeychain(key: self.savedExpirationKey, value: expiresAt)
+                    self.storeSessionBinding(token: token)
                     UserDefaults.standard.set(cleanKey, forKey: "saved_license_key")
                     self.activeLicense = cleanKey
                     self.expirationText = expiresAt
@@ -513,7 +600,30 @@ public final class AuthService: ObservableObject {
     
     // MARK: - Silent Session Validation (App Launch)
     private func validateSessionSilently(token: String) {
-        guard let url = URL(string: "\(serverBaseURL)/api/v2/auth/validate") else { return }
+        // Fast-fail: if the runtime has been compromised since session boot,
+        // never trust the token — even on offline paths.
+        if isRuntimeCompromised {
+            DispatchQueue.main.async { self.logout() }
+            return
+        }
+        // Fast-fail: binding must match or token is treated as stolen.
+        guard verifySessionBinding(token: token) else {
+            DispatchQueue.main.async { self.logout() }
+            return
+        }
+        // Freshness: if the last successful validation is older than the
+        // window, require a fresh round-trip. If we can't reach the server,
+        // the heartbeat path below will log out on failure.
+        let lastValidated = TimeInterval(loadKeychain(key: lastValidatedKey) ?? "0") ?? 0
+        let now = Date().timeIntervalSince1970
+        let staleBeyondWindow = (now - lastValidated) > sessionFreshnessWindow
+
+        guard let url = URL(string: "\(serverBaseURL)/api/v2/auth/validate") else {
+            if staleBeyondWindow {
+                DispatchQueue.main.async { self.logout() }
+            }
+            return
+        }
         
         let hwid = self.hardwareID
         let timestamp = Int(Date().timeIntervalSince1970)
@@ -582,6 +692,11 @@ public final class AuthService: ObservableObject {
             }
             
             DispatchQueue.main.async {
+                // Refresh the "last validated" marker and refresh the binding
+                // so a rotated token (if the server ever rotates) stays bound
+                // to this device and build.
+                self.saveKeychain(key: self.lastValidatedKey, value: String(Int(Date().timeIntervalSince1970)))
+                self.storeSessionBinding(token: token)
                 self.isAuthenticated = true
                 self.startHeartbeatTimer()
             }
@@ -592,7 +707,14 @@ public final class AuthService: ObservableObject {
     private func startHeartbeatTimer() {
         heartbeatTimer?.invalidate()
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-            guard let self = self, let token = self.loadKeychain(key: self.tokenKey), !token.isEmpty else { return }
+            guard let self = self else { return }
+            // Inline tamper watchdog — forces logout the moment the runtime
+            // shield detects a debugger attach or integrity drift.
+            if self.isRuntimeCompromised {
+                DispatchQueue.main.async { self.logout() }
+                return
+            }
+            guard let token = self.loadKeychain(key: self.tokenKey), !token.isEmpty else { return }
             self.validateSessionSilently(token: token)
         }
     }
@@ -604,6 +726,8 @@ public final class AuthService: ObservableObject {
         deleteKeychain(key: tokenKey)
         deleteKeychain(key: savedLicenseKey)
         deleteKeychain(key: savedExpirationKey)
+        deleteKeychain(key: sessionBindingKey)
+        deleteKeychain(key: lastValidatedKey)
         UserDefaults.standard.removeObject(forKey: "saved_license_key")
         UserDefaults.standard.synchronize()
         self.isAuthenticated = false

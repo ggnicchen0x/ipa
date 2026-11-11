@@ -490,6 +490,249 @@ struct AppSearchField: View {
     }
 }
 
+// MARK: - Premium Game Selector
+
+struct PremiumGameOption: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let icon: String
+    let tint: Color
+
+    init(id: String, title: String, subtitle: String = "", icon: String = "gamecontroller.fill", tint: Color = AppTheme.accent) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self.tint = tint
+    }
+}
+
+struct PremiumGameSelector: View {
+    @Binding var selection: String
+    let options: [PremiumGameOption]
+    var onChange: ((_ previous: String, _ next: String) -> Void)? = nil
+
+    @State private var isExpanded: Bool = false
+    @Namespace private var selectorNamespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var selectedOption: PremiumGameOption {
+        options.first(where: { $0.id == selection }) ?? options.first!
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            selectorHeader
+            if isExpanded {
+                dropdownPanel
+                    .transition(
+                        .asymmetric(
+                            insertion: .scale(scale: 0.96, anchor: .top).combined(with: .opacity),
+                            removal: .scale(scale: 0.98, anchor: .top).combined(with: .opacity)
+                        )
+                    )
+            }
+        }
+        .animation(
+            AppAnimation.respectingMotion(.spring(response: 0.38, dampingFraction: 0.84), reduceMotion: reduceMotion),
+            value: isExpanded
+        )
+    }
+
+    private var selectorHeader: some View {
+        Button {
+            withAnimation(
+                AppAnimation.respectingMotion(.spring(response: 0.38, dampingFraction: 0.84), reduceMotion: reduceMotion)
+            ) {
+                isExpanded.toggle()
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(selectedOption.tint.opacity(0.14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(selectedOption.tint.opacity(0.28), lineWidth: 0.5)
+                        )
+                    Image(systemName: selectedOption.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(selectedOption.tint)
+                }
+                .frame(width: 30, height: 30)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(selectedOption.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineLimit(1)
+                    if !selectedOption.subtitle.isEmpty {
+                        Text(selectedOption.subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(AppTheme.accent)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .animation(
+                        AppAnimation.respectingMotion(.spring(response: 0.3, dampingFraction: 0.85), reduceMotion: reduceMotion),
+                        value: isExpanded
+                    )
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(AppTheme.cardBackgroundElevated)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(isExpanded ? AppTheme.accent.opacity(0.45) : AppTheme.cardBorder, lineWidth: 0.7)
+                    )
+                    .shadow(
+                        color: isExpanded ? AppTheme.purpleGlow.opacity(0.18) : .clear,
+                        radius: 10, x: 0, y: 4
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Select game")
+        .accessibilityValue(selectedOption.title)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var dropdownPanel: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
+                PremiumGameSelectorRow(
+                    option: option,
+                    isSelected: option.id == selection,
+                    isLast: index == options.count - 1
+                ) {
+                    select(option)
+                }
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.cardBorder, lineWidth: 0.7)
+                )
+                .shadow(color: Color.black.opacity(0.45), radius: 18, x: 0, y: 10)
+        )
+        .padding(.top, 6)
+    }
+
+    private func select(_ option: PremiumGameOption) {
+        guard option.id != selection else {
+            withAnimation(
+                AppAnimation.respectingMotion(.spring(response: 0.35, dampingFraction: 0.85), reduceMotion: reduceMotion)
+            ) {
+                isExpanded = false
+            }
+            return
+        }
+        let previous = selection
+        UISelectionFeedbackGenerator().selectionChanged()
+        // Fire the onChange callback BEFORE mutating the binding so the host
+        // can read the old target (e.g. to revert its state on the old game)
+        // before targetBundle flips to the new one.
+        onChange?(previous, option.id)
+        withAnimation(
+            AppAnimation.respectingMotion(.spring(response: 0.38, dampingFraction: 0.84), reduceMotion: reduceMotion)
+        ) {
+            selection = option.id
+            isExpanded = false
+        }
+    }
+}
+
+private struct PremiumGameSelectorRow: View {
+    let option: PremiumGameOption
+    let isSelected: Bool
+    let isLast: Bool
+    let onTap: () -> Void
+
+    @State private var isPressed: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(option.tint.opacity(isSelected ? 0.22 : 0.10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .stroke(option.tint.opacity(isSelected ? 0.40 : 0.15), lineWidth: 0.5)
+                        )
+                    Image(systemName: option.icon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(option.tint)
+                }
+                .frame(width: 28, height: 28)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(option.title)
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineLimit(1)
+                    if !option.subtitle.isEmpty {
+                        Text(option.subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppTheme.accent)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(
+                        isSelected
+                            ? AppTheme.accent.opacity(0.12)
+                            : (isPressed ? Color.white.opacity(0.04) : Color.clear)
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isPressed ? 0.985 : 1.0)
+        .animation(
+            AppAnimation.respectingMotion(.spring(response: 0.25, dampingFraction: 0.82), reduceMotion: reduceMotion),
+            value: isPressed
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in if !isPressed { isPressed = true } }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
 // MARK: - AppLogo
 
 struct AppLogo: View {
