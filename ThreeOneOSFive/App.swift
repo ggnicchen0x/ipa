@@ -16,7 +16,6 @@ struct ThreeOneOSFiveApp: App {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init() {
-        AntiDetection.enforceHardenedSecurity()
         setupLogCapture()
         log("app: 3105 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
         

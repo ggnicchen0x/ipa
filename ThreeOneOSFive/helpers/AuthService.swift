@@ -7,27 +7,21 @@ public final class AuthService: ObservableObject {
     public static let shared = AuthService()
     
     // Server Configuration - Live Bot Hosting Python egg URL
-    // App Version - Official Release v1.1.4
-    public let appVersion: String = "1.1.4"
+    // App Version - Official Release v1.1.3
+    public let appVersion: String = "1.1.3"
     
-    // Cryptographic Byte Deobfuscator
-    private static func _k(_ bytes: [UInt8]) -> String {
-        let dec = bytes.map { $0 ^ 0x5A }
-        return String(bytes: dec, encoding: .utf8) ?? ""
-    }
-    
-    // Server Configuration - Encrypted endpoint
-    public var serverBaseURL: String = AuthService._k([50, 46, 46, 42, 96, 117, 117, 60, 51, 99, 116, 56, 53, 46, 119, 50, 53, 41, 46, 51, 52, 61, 116, 57, 54, 53, 47, 62, 96, 104, 111, 98, 106, 98])
+    // Server Configuration - Live Bot Hosting Python egg URL
+    public var serverBaseURL: String = "http://fi9.bot-hosting.cloud:25808"
     
     // Shared HMAC Secret (Matches backend config.py HMAC_SECRET)
-    private let hmacSecret = AuthService._k([105, 107, 106, 111, 5, 18, 23, 27, 25, 5, 9, 19, 29, 5, 49, 99, 98, 104, 105, 50, 48, 62, 98, 99, 104, 105, 50, 48, 49, 41, 62, 60, 109, 98, 104, 105, 110])
+    private let hmacSecret = "3105_HMAC_SIG_k9823hjd8923hjksdf78234"
     
     // Storage Keys (Keychain Accounts)
-    private let tokenKey = AuthService._k([57, 53, 55, 116, 46, 50, 40, 63, 63, 53, 52, 63, 53, 41, 60, 51, 44, 63, 116, 59, 47, 46, 50, 116, 41, 63, 41, 41, 51, 53, 52, 5, 46, 53, 49, 63, 52])
+    private let tokenKey = "com.threeoneosfive.auth.session_token"
     private let savedLicenseKey = "com.threeoneosfive.auth.license_key"
     private let savedExpirationKey = "com.threeoneosfive.auth.expiration_date"
     private let lockoutUntilKey = "com.threeoneosfive.auth.lockout_until"
-    private let keychainService = AuthService._k([57, 53, 55, 116, 59, 42, 42, 54, 63, 116, 55, 53, 56, 51, 54, 63, 116, 23, 53, 56, 51, 54, 63, 18, 53, 47, 41, 63, 27, 40, 40, 63, 41, 46, 116, 59, 47, 46, 50])
+    private let keychainService = "com.apple.mobile.MobileHouseArrest.auth"
     
     @Published public var isAuthenticated: Bool = false
     @Published public var isLoading: Bool = false
@@ -172,9 +166,8 @@ public final class AuthService: ObservableObject {
         let osVersion = UIDevice.current.systemVersion
         let systemName = UIDevice.current.systemName
         
-        // Salted multi-identifier string (Obfuscated salt)
-        let salt = AuthService._k([105, 107, 106, 111, 5, 9, 31, 25, 5, 17, 31, 3, 5, 63, 110, 56, 106, 111, 110, 108, 59, 111, 109, 57, 98, 110, 110, 62, 62, 56, 99, 110, 57, 62, 56, 62, 104, 63, 104, 105, 99, 105, 62, 60, 107, 5, 10, 8, 21, 30])
-        let rawPayload = "\(idfv)::\(model)::\(systemName)_\(osVersion)::\(salt)"
+        // Salted multi-identifier string
+        let rawPayload = "\(idfv)::\(model)::\(systemName)_\(osVersion)::3105_SEC_KEY_e4b0546a57c844ddb94cdbd2e2393df1_PROD"
         return sha256(rawPayload)
     }
     
@@ -198,12 +191,6 @@ public final class AuthService: ObservableObject {
     
     // MARK: - Login Action
     public func login(licenseKey: String, completion: @escaping (Bool, String?) -> Void) {
-        AntiDetection.enforceHardenedSecurity()
-        if AntiDetection.isDeviceTampered() {
-            completion(false, "Security integrity violation: Hooking framework or debugger detected.")
-            return
-        }
-        
         if isLockedOut {
             completion(false, "Spam detected: Do not repeatedly tap login. You are timed out. Please wait \(formattedLockoutTime).")
             return
