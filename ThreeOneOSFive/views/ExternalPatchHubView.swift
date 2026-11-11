@@ -47,14 +47,14 @@ struct ExternalPatchHubView: View {
             PremiumGameOption(
                 id: "com.dts.freefiremax",
                 title: "Free Fire MAX",
-                subtitle: "Global · Enhanced client",
+                subtitle: "FF MAX client",
                 icon: "flame.fill",
                 tint: AppTheme.accent
             ),
             PremiumGameOption(
                 id: "com.dts.freefireth",
-                title: "Free Fire TH",
-                subtitle: "Thailand region client",
+                title: "Free Fire",
+                subtitle: "FF regular client",
                 icon: "flame.fill",
                 tint: AppTheme.accent
             )
