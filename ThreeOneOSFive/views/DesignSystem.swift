@@ -496,15 +496,40 @@ struct PremiumGameOption: Identifiable, Equatable {
     let id: String
     let title: String
     let subtitle: String
-    let icon: String
+    let icon: String             // SF Symbol fallback
+    let assetName: String?       // Asset catalog name (preferred when present)
     let tint: Color
 
-    init(id: String, title: String, subtitle: String = "", icon: String = "gamecontroller.fill", tint: Color = AppTheme.accent) {
+    init(
+        id: String,
+        title: String,
+        subtitle: String = "",
+        icon: String = "gamecontroller.fill",
+        assetName: String? = nil,
+        tint: Color = AppTheme.accent
+    ) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
+        self.assetName = assetName
         self.tint = tint
+    }
+}
+
+@ViewBuilder
+private func premiumGameIcon(for option: PremiumGameOption, size: CGFloat) -> some View {
+    if let name = option.assetName, UIImage(named: name) != nil {
+        Image(name)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+    } else {
+        Image(systemName: option.icon)
+            .font(.system(size: size * 0.55, weight: .semibold))
+            .foregroundStyle(option.tint)
+            .frame(width: size, height: size)
     }
 }
 
@@ -551,15 +576,15 @@ struct PremiumGameSelector: View {
         } label: {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(selectedOption.tint.opacity(0.14))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(selectedOption.tint.opacity(0.28), lineWidth: 0.5)
-                        )
-                    Image(systemName: selectedOption.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(selectedOption.tint)
+                    if selectedOption.assetName == nil || UIImage(named: selectedOption.assetName ?? "") == nil {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(selectedOption.tint.opacity(0.14))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(selectedOption.tint.opacity(0.28), lineWidth: 0.5)
+                            )
+                    }
+                    premiumGameIcon(for: selectedOption, size: 30)
                 }
                 .frame(width: 30, height: 30)
 
@@ -672,15 +697,15 @@ private struct PremiumGameSelectorRow: View {
         Button(action: onTap) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(option.tint.opacity(isSelected ? 0.22 : 0.10))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .stroke(option.tint.opacity(isSelected ? 0.40 : 0.15), lineWidth: 0.5)
-                        )
-                    Image(systemName: option.icon)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(option.tint)
+                    if option.assetName == nil || UIImage(named: option.assetName ?? "") == nil {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(option.tint.opacity(isSelected ? 0.22 : 0.10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .stroke(option.tint.opacity(isSelected ? 0.40 : 0.15), lineWidth: 0.5)
+                            )
+                    }
+                    premiumGameIcon(for: option, size: 28)
                 }
                 .frame(width: 28, height: 28)
 

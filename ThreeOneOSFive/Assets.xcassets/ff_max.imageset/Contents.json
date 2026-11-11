@@ -1,0 +1,9 @@
+{
+  "images" : [
+    { "filename" : "ff_max.png",    "idiom" : "universal", "scale" : "1x" },
+    { "filename" : "ff_max@2x.png", "idiom" : "universal", "scale" : "2x" },
+    { "filename" : "ff_max@3x.png", "idiom" : "universal", "scale" : "3x" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 },
+  "properties" : { "template-rendering-intent" : "original", "preserves-vector-representation" : false }
+}

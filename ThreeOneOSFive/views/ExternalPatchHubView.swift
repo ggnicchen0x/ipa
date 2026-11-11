@@ -57,12 +57,14 @@ struct ExternalPatchHubView: View {
                 id: "com.dts.freefiremax",
                 title: "FF MAX",
                 icon: "flame.fill",
+                assetName: "ff_max",
                 tint: AppTheme.accent
             ),
             PremiumGameOption(
                 id: "com.dts.freefireth",
                 title: "FF Regular",
                 icon: "flame.fill",
+                assetName: "ff_regular",
                 tint: AppTheme.accent
             )
         ]
