@@ -306,6 +306,6 @@ struct UserAccountView: View {
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
             ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            ?? "1.1.3"
+            ?? "1.1.4"
     }
 }

@@ -7,8 +7,8 @@ public final class AuthService: ObservableObject {
     public static let shared = AuthService()
     
     // Server Configuration - Live Bot Hosting Python egg URL
-    // App Version - Official Release v1.1.3
-    public let appVersion: String = "1.1.3"
+    // App Version - Official Release v1.1.4
+    public let appVersion: String = "1.1.4"
     
     // Server Configuration - Live Bot Hosting Python egg URL
     public var serverBaseURL: String = "http://fi9.bot-hosting.cloud:25808"
