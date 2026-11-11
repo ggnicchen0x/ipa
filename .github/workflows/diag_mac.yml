@@ -1,0 +1,8 @@
+name: Diag Mac
+on:
+  workflow_dispatch:
+jobs:
+  diag:
+    runs-on: macos-14
+    steps:
+      - run: echo hello from macos diag
