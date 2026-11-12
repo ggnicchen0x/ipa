@@ -30,21 +30,30 @@ public struct LoginView: View {
     
     public var body: some View {
         ZStack {
-            // Background Base
-            Color(hex: 0x09090b)
+            // Background Base (slightly deeper for a subtler fade)
+            Color(hex: 0x060608)
                 .ignoresSafeArea()
-            
+
             // Refined ambient highlight (soft, restrained purple vignette)
             RadialGradient(
                 gradient: Gradient(colors: [
-                    Color(hex: 0xa855f7).opacity(0.12),
-                    Color(hex: 0x09090b).opacity(0.0)
+                    Color(hex: 0xa855f7).opacity(0.09),
+                    Color(hex: 0x060608).opacity(0.0)
                 ]),
                 center: .top,
                 startRadius: 10,
                 endRadius: 360
             )
             .ignoresSafeArea()
+
+            // Bottom-edge fade — just a hint, keeps the card floating
+            LinearGradient(
+                colors: [Color.clear, Color.black.opacity(0.35)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -175,12 +184,19 @@ public struct LoginView: View {
             }
             
             // Typography Hierarchy
-            VStack(spacing: 5) {
-                Text("BYTE IOS EXTERNAL")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .tracking(0.3)
-                
+            VStack(spacing: 6) {
+                Text("BYTE EXTERNAL")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.white, Color(hex: 0xd8c4ff)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color(hex: 0xa855f7).opacity(0.18), radius: 10, x: 0, y: 2)
+
                 Text("Enter your license key to continue")
                     .font(.system(size: 13, weight: .regular))
                     .foregroundColor(Color.white.opacity(0.55))
