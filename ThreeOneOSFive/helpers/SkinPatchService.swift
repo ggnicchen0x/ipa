@@ -8,14 +8,19 @@ public struct SkinItem: Identifiable, Equatable {
     public let description: String
     public let patchFileName: String
     public let characterName: String
-    
+    /// When true, the delivery feature key is suffixed with "_ffmax" or
+    /// "_ffth" based on the selected target bundle so the backend can route
+    /// to per-bundle .3105 packages.
+    public let supportsPerBundle: Bool
+
     public init(
         id: String,
         name: String,
         imageName: String,
         description: String,
         patchFileName: String,
-        characterName: String
+        characterName: String,
+        supportsPerBundle: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -23,7 +28,14 @@ public struct SkinItem: Identifiable, Equatable {
         self.description = description
         self.patchFileName = patchFileName
         self.characterName = characterName
+        self.supportsPerBundle = supportsPerBundle
     }
+}
+
+private func featureKey(for skin: SkinItem, targetBundle: String) -> String {
+    let base = skin.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard skin.supportsPerBundle else { return base }
+    return targetBundle == "com.dts.freefireth" ? "\(base)_ffth" : "\(base)_ffmax"
 }
 
 public final class SkinPatchService: ObservableObject {
@@ -36,7 +48,7 @@ public final class SkinPatchService: ObservableObject {
     private let lock = NSLock()
     private let storageKey = "applied_skin_ids_set"
     
-    // Complete skin catalog (Ignis, Bunny, Spider, Gojo)
+    // Complete skin catalog
     public let skins: [SkinItem] = [
         SkinItem(
             id: "mod_ignis",
@@ -69,6 +81,60 @@ public final class SkinPatchService: ObservableObject {
             description: "Works on FF Max Awakened Alok Character , Make sure character is download before applying",
             patchFileName: "Mod_Gojo.3105",
             characterName: "Awakened Alok"
+        ),
+        SkinItem(
+            id: "blue_kitty",
+            name: "Blue Kitty",
+            imageName: "blue_kitty",
+            description: "Works on FF Max & FF Regular. Make sure character is download before applying",
+            patchFileName: "BlueKitty.3105",
+            characterName: "Awakened Alok",
+            supportsPerBundle: true
+        ),
+        SkinItem(
+            id: "captain_america",
+            name: "Captain America",
+            imageName: "captain_america",
+            description: "Works on FF Max & FF Regular. Make sure character is download before applying",
+            patchFileName: "CaptainAmerica.3105",
+            characterName: "Awakened Alok",
+            supportsPerBundle: true
+        ),
+        SkinItem(
+            id: "mod_ben10",
+            name: "Mod Ben10",
+            imageName: "mod_ben10",
+            description: "Works on FF Max & FF Regular. Make sure character is download before applying",
+            patchFileName: "ModBen10.3105",
+            characterName: "Awakened Alok",
+            supportsPerBundle: true
+        ),
+        SkinItem(
+            id: "mod_rich",
+            name: "Mod Rich",
+            imageName: "mod_rich",
+            description: "Works on FF Max & FF Regular. Make sure character is download before applying",
+            patchFileName: "ModRich.3105",
+            characterName: "Awakened Alok",
+            supportsPerBundle: true
+        ),
+        SkinItem(
+            id: "mod_sports",
+            name: "Mod Sports",
+            imageName: "mod_sports",
+            description: "Works on FF Max & FF Regular. Make sure character is download before applying",
+            patchFileName: "ModSports.3105",
+            characterName: "Awakened Alok",
+            supportsPerBundle: true
+        ),
+        SkinItem(
+            id: "pink_kitty",
+            name: "Pink Kitty",
+            imageName: "pink_kitty",
+            description: "Works on FF Max & FF Regular. Make sure character is download before applying",
+            patchFileName: "PinkKitty.3105",
+            characterName: "Awakened Alok",
+            supportsPerBundle: true
         )
     ]
     
@@ -115,8 +181,8 @@ public final class SkinPatchService: ObservableObject {
         
         let hwid = auth.hardwareID
         let timestamp = Int(Date().timeIntervalSince1970)
-        let normalizedKey = skin.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        
+        let normalizedKey = featureKey(for: skin, targetBundle: targetBundle)
+
         // Anti-replay HMAC signature: feature_key:hwid:timestamp
         let sigPayload = "\(normalizedKey):\(hwid):\(timestamp)"
         let signature = auth.hmacSHA256(payload: sigPayload, key: auth.hmacSecretValue)

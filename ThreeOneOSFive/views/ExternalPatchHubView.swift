@@ -238,22 +238,24 @@ struct ExternalPatchHubView: View {
 
                 Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
 
-                // 4. Visuals (Hologram Location Exposed) — uses the new v2 hologram file
-                PremiumToggleRow(
-                    icon: "eye.fill",
-                    title: "Visuals",
-                    subtitle: "Hologram for Location Exposed",
-                    isOn: $visualsEnabled,
-                    isProcessing: processingFeature == "hologram_v2",
-                    isDisabled: processingFeature != nil && processingFeature != "hologram_v2"
-                )
-                .padding(.horizontal, AppTheme.cardPadding)
-                .padding(.vertical, 10)
-                .onChange(of: visualsEnabled) { isEnabled in
-                    handleToggleChange(featureName: "hologram_v2", isEnabled: isEnabled)
-                }
+                // 4. Visuals (Hologram Location Exposed) — FF MAX only; FF Regular variant coming later
+                if !isFFRegular {
+                    PremiumToggleRow(
+                        icon: "eye.fill",
+                        title: "Visuals",
+                        subtitle: "Hologram for Location Exposed",
+                        isOn: $visualsEnabled,
+                        isProcessing: processingFeature == "hologram_ffmax",
+                        isDisabled: processingFeature != nil && processingFeature != "hologram_ffmax"
+                    )
+                    .padding(.horizontal, AppTheme.cardPadding)
+                    .padding(.vertical, 10)
+                    .onChange(of: visualsEnabled) { isEnabled in
+                        handleToggleChange(featureName: "hologram_ffmax", isEnabled: isEnabled)
+                    }
 
-                Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+                    Divider().overlay(AppTheme.subtleBorder).padding(.horizontal, AppTheme.cardPadding)
+                }
 
                 // 5. 144 FPS Unlock
                 PremiumToggleRow(
@@ -423,7 +425,7 @@ struct ExternalPatchHubView: View {
             magicBulletEnabled = false
         }
         if visualsEnabled {
-            CloudPatchService.shared.revertPatch(featureKey: "hologram_v2", targetBundle: previousBundle) { _, _ in }
+            CloudPatchService.shared.revertPatch(featureKey: "hologram_ffmax", targetBundle: previousBundle) { _, _ in }
             visualsEnabled = false
         }
         if fps144Enabled {
@@ -465,7 +467,7 @@ struct ExternalPatchHubView: View {
         case "144": featureTitle = "144 FPS Unlock"
         case "magic": featureTitle = "Magic Bullet"
         case "aimbody": featureTitle = "Aim Body"
-        case "hologram", "hologram_v2", "visuals": featureTitle = "Visuals"
+        case "hologram_ffmax": featureTitle = "Visuals"
         default: featureTitle = featureName.capitalized
         }
         
@@ -496,7 +498,7 @@ struct ExternalPatchHubView: View {
                         case "144": self.fps144Enabled = false
                         case "magic": self.magicBulletEnabled = false
                         case "aimbody": self.bodyDragEnabled = false
-                        case "hologram", "hologram_v2", "visuals": self.visualsEnabled = false
+                        case "hologram_ffmax": self.visualsEnabled = false
                         default: break
                         }
                     }

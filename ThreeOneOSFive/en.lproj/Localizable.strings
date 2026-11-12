@@ -20,13 +20,6 @@
 "update.dismiss" = "Don't show again";
 "patch.error.wrong_password" = "Incorrect password.";
 
-"attribution.title" = "About 3105";
-"attribution.subtitle" = "Project information";
-"attribution.link_section" = "Project link";
-"attribution.url" = "URL";
-"attribution.open" = "Open link";
-"attribution.share" = "Share link";
-
 "onboarding.step" = "Step %@ of %@";
 "onboarding.language_title" = "Choose your language";
 "onboarding.language_subtitle" = "You can change this later in Settings.";

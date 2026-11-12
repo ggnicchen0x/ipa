@@ -24,14 +24,6 @@ static inline NSString *decodedAttributionString(void) {
     return [NSString stringWithUTF8String:tmp];
 }
 
-NSURL *DisplayIdentityAttributionURL(void) {
-    NSString *s = decodedAttributionString();
-    // Defensive: also used to validate that the binary hasn't been tampered
-    // (attribution string must look like a URL or attestation fails).
-    if (![s hasPrefix:@"https://"]) return nil;
-    return [NSURL URLWithString:s];
-}
-
 NSString *DisplayIdentityAttestationToken(void) {
     // Cheap attestation token derived from the same seed + bundle id.
     // Called from Swift at launch; if stripped, UI shows "attestation failed".
