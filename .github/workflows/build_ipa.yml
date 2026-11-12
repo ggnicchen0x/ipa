@@ -54,12 +54,19 @@ jobs:
             mv "Payload/ByteExternal.app/3105" "Payload/ByteExternal.app/ByteExternal"
           fi
 
-          # Copy standard icon files for legacy sideloaders and SpringBoard
-          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon*.png Payload/ByteExternal.app/ 2>/dev/null || true
+          # Copy only the icons SpringBoard / legacy sideloaders actually read.
+          # The full icon set still ships compiled into Assets.car; the rest
+          # of the PNGs that used to clutter the bundle are redundant.
+          ICONSET=ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset
+          cp "$ICONSET/AppIcon60x60@2x.png" Payload/ByteExternal.app/ 2>/dev/null || true
+          cp "$ICONSET/AppIcon60x60@3x.png" Payload/ByteExternal.app/ 2>/dev/null || true
+          # Generic fallbacks for very old sideloaders (plain Icon.png / AppIcon.png)
+          cp "$ICONSET/AppIcon60x60@2x.png" Payload/ByteExternal.app/AppIcon.png 2>/dev/null || true
+          cp "$ICONSET/AppIcon60x60@2x.png" Payload/ByteExternal.app/Icon.png 2>/dev/null || true
 
-          # Create iTunesArtwork for sideloaders from highest resolution AppIcon
-          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png iTunesArtwork@2x 2>/dev/null || true
-          cp ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon512.png iTunesArtwork 2>/dev/null || true
+          # iTunesArtwork lives at the .ipa root, not inside the .app bundle.
+          cp "$ICONSET/AppIcon-1024.png" iTunesArtwork@2x 2>/dev/null || true
+          cp "$ICONSET/AppIcon512.png" iTunesArtwork 2>/dev/null || true
 
           ls -la Payload/ByteExternal.app/
 
